@@ -4,7 +4,11 @@ use std::path::PathBuf;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Config {
+    #[serde(default)]
     pub matches: Vec<MatchFile>,
+
+    #[serde(default)]
+    pub params: Option<serde_norway::Value>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -18,6 +22,10 @@ pub struct MatchFile {
     pub force_mode: Option<String>,
     pub propagate_case: Option<bool>,
     pub word: Option<bool>,
+    pub image_path: Option<String>,
+    pub markdown: Option<String>,
+    pub html: Option<String>,
+    pub search_label: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -28,6 +36,8 @@ pub struct FieldConfig {
     pub default: Option<String>,
     pub placeholder: Option<String>,
     pub values: Option<serde_norway::Value>,
+    #[serde(rename = "trim_string_values")]
+    pub trim_string_values: Option<bool>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -50,10 +60,11 @@ impl Config {
     pub fn load_dir(dir: &PathBuf) -> Result<Vec<(PathBuf, Self)>, super::ConfigError> {
         let mut results = Vec::new();
         if let Ok(entries) = std::fs::read_dir(dir) {
-            for entry in entries.flatten() {
+            let mut entries: Vec<_> = entries.flatten().collect();
+            entries.sort_by_key(|e| e.file_name());
+            for entry in entries {
                 let path = entry.path();
-                if path.extension().is_some_and(|e| e == "yml" || e == "yaml")
-                {
+                if path.extension().is_some_and(|e| e == "yml" || e == "yaml") {
                     match Self::load(&path) {
                         Ok(config) => results.push((path, config)),
                         Err(e) => log::warn!("Skipping {}: {}", path.display(), e),
@@ -62,5 +73,146 @@ impl Config {
             }
         }
         Ok(results)
+    }
+
+    pub fn from_str(content: &str) -> Result<Self, super::ConfigError> {
+        serde_norway::from_str(content)
+            .map_err(|e| super::ConfigError::Parse(e.to_string()))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::Config;
+
+    #[test]
+    fn test_simple_text_replacement() {
+        let yaml = r#"
+matches:
+  - trigger: ":espanso"
+    replace: "Hi there!"
+"#;
+        let config = Config::from_str(yaml).unwrap();
+        assert_eq!(config.matches.len(), 1);
+        let m = &config.matches[0];
+        assert_eq!(m.trigger.as_deref(), Some(":espanso"));
+        assert_eq!(m.replace.as_deref(), Some("Hi there!"));
+    }
+
+    #[test]
+    fn test_multiple_triggers() {
+        let yaml = r#"
+matches:
+  - triggers: [":hello", ":hi"]
+    replace: "world"
+"#;
+        let config = Config::from_str(yaml).unwrap();
+        let m = &config.matches[0];
+        assert_eq!(m.triggers.as_ref().unwrap().len(), 2);
+    }
+
+    #[test]
+    fn test_multi_line_replace() {
+        let yaml = r#"
+matches:
+  - trigger: ":mlt"
+    replace: |
+      This is line one.
+      This is line two.
+"#;
+        let config = Config::from_str(yaml).unwrap();
+        let m = &config.matches[0];
+        assert!(m.replace.as_deref().unwrap().contains("line one"));
+    }
+
+    #[test]
+    fn test_form_with_fields() {
+        let yaml = r#"
+matches:
+  - trigger: ":greet"
+    form: |
+      Hey [[name]],
+      Happy Birthday!
+    form_fields:
+      name:
+        placeholder: "Enter your name"
+"#;
+        let config = Config::from_str(yaml).unwrap();
+        let m = &config.matches[0];
+        assert!(m.form.is_some());
+        assert!(m.form_fields.is_some());
+    }
+
+    #[test]
+    fn test_choice_field() {
+        let yaml = r#"
+matches:
+  - trigger: ":choose"
+    form: "Pick [[choice]]"
+    form_fields:
+      choice:
+        type: choice
+        values:
+          - Option A
+          - Option B
+"#;
+        let config = Config::from_str(yaml).unwrap();
+        let m = &config.matches[0];
+        let fields = m.form_fields.as_ref().unwrap();
+        assert_eq!(fields["choice"].field_type.as_deref(), Some("choice"));
+    }
+
+    #[test]
+    fn test_variables() {
+        let yaml = r#"
+matches:
+  - trigger: ":now"
+    replace: "It's {{mytime}}"
+    vars:
+      - name: mytime
+        type: date
+        params:
+          format: "%H:%M"
+"#;
+        let config = Config::from_str(yaml).unwrap();
+        let m = &config.matches[0];
+        let vars = m.vars.as_ref().unwrap();
+        assert_eq!(vars[0].name, "mytime");
+        assert_eq!(vars[0].var_type, "date");
+    }
+
+    #[test]
+    fn test_verbose_form() {
+        let yaml = r#"
+matches:
+  - trigger: ":rev"
+    replace: "{{reversed}}"
+    vars:
+    - name: form1
+      type: form
+      params:
+        layout: "Reverse [[name]]"
+    - name: reversed
+      type: shell
+      params:
+        cmd: "echo '{{form1.name}}' | rev"
+"#;
+        let config = Config::from_str(yaml).unwrap();
+        let m = &config.matches[0];
+        let vars = m.vars.as_ref().unwrap();
+        assert_eq!(vars[1].var_type, "shell");
+    }
+
+    #[test]
+    fn test_empty_config() {
+        let yaml = "matches: []";
+        let config = Config::from_str(yaml).unwrap();
+        assert!(config.matches.is_empty());
+    }
+
+    #[test]
+    fn test_invalid_yaml() {
+        let yaml = "matches: [broken";
+        assert!(Config::from_str(yaml).is_err());
     }
 }
