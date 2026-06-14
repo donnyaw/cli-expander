@@ -69,18 +69,61 @@ impl Matcher {
         result.matches.into_iter().next()
     }
 
+    /// Find a trigger anywhere in the input (not just at end).
+    /// Useful for `expand` command where user passes full text like "say :hello to everyone".
+    pub fn find_in(&self, input: &str) -> Option<Match> {
+        let mut results = Vec::new();
+
+        for m in &self.matches {
+            for trigger in m.triggers() {
+                if let Some(_pos) = find_trigger_at_word_boundary(input, trigger) {
+                    results.push(Match {
+                        matched_text: trigger.to_string(),
+                        replace: m.replace.clone(),
+                        form: m.form.clone(),
+                        form_fields: m.form_fields.clone(),
+                        vars: m.vars.clone(),
+                        source: m.clone(),
+                    });
+                }
+            }
+        }
+
+        results.sort_by(|a, b| a.matched_text.len().cmp(&b.matched_text.len()).reverse());
+        results.into_iter().next()
+    }
+
     fn check_trigger(&self, input: &str, trigger: &str) -> Option<String> {
         if input.ends_with(trigger) {
             let prefix_end = input.len() - trigger.len();
             let prefix = &input[..prefix_end];
-
-            // Check word boundary: trigger must be at start of input or preceded by whitespace
             if prefix.is_empty() || prefix.ends_with(char::is_whitespace) {
                 return Some(trigger.to_string());
             }
         }
         None
     }
+}
+
+/// Find a trigger string at a word boundary anywhere in the input.
+fn find_trigger_at_word_boundary(input: &str, trigger: &str) -> Option<usize> {
+    let mut start = 0;
+    while let Some(pos) = input[start..].find(trigger) {
+        let abs_pos = start + pos;
+        let has_boundary_before = abs_pos == 0
+            || input.as_bytes()[abs_pos - 1].is_ascii_whitespace();
+        let end = abs_pos + trigger.len();
+        let has_boundary_after = end >= input.len()
+            ||                 input.as_bytes().get(end).is_none_or(|&b| b.is_ascii_whitespace() || b == b',' || b == b'.' || b == b'!' || b == b'?');
+        if has_boundary_before && has_boundary_after {
+            return Some(abs_pos);
+        }
+        start = abs_pos + 1;
+        if start >= input.len() {
+            break;
+        }
+    }
+    None
 }
 
 #[cfg(test)]

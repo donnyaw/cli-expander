@@ -86,7 +86,9 @@ fn main() -> anyhow::Result<()> {
             let configs = texpand_config::Config::load_dir(&dir)?;
             let matcher = texpand_match::Matcher::from_files(configs);
 
-            match matcher.find_best(&input) {
+            // Try exact end-of-buffer match first, then fall back to anywhere
+            let matched = matcher.find_best(&input).or_else(|| matcher.find_in(&input));
+            match matched {
                 Some(m) => {
                     if let Some(ref form_layout) = m.form {
                         // This match has a form — render it via Cursive UI
