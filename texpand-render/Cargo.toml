@@ -13,3 +13,5 @@ log = { workspace = true }
 regex = { workspace = true }
 texpand-config = { path = "../texpand-config" }
 texpand-match = { path = "../texpand-match" }
+chrono = "0.4"
+arboard = "3"

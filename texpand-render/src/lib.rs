@@ -1,5 +1,7 @@
 pub mod extension;
 pub mod template;
+pub mod variables;
 
-pub use extension::{Extension, FormExtension};
+pub use extension::FormExtension;
 pub use template::Template;
+pub use variables::VariableResolver;
