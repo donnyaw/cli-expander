@@ -2,13 +2,13 @@
 # Source this file from .bashrc:
 #   source /path/to/texpand.bash
 #
-# Type :hello and press Space or Ctrl+T — auto-expands in-place like Espanso.
+# Type :hello and press Space or Ctrl+T — expands inline.
+# For forms, use te :ticket directly (opens TUI in terminal).
 
 _texpand_cmd="te"
 
 _texpand_expand() {
     local input="$READLINE_LINE"
-    local point="$READLINE_POINT"
     local result
     result=$($_texpand_cmd "$input" 2>/dev/null)
     if [ $? -eq 0 ] && [ -n "$result" ]; then
@@ -17,7 +17,7 @@ _texpand_expand() {
     fi
 }
 
-# Called after space is inserted — checks if there's a trigger before it
+# Called on Space — expand first, then insert space
 _texpand_on_space() {
     _texpand_expand
     READLINE_LINE+=" "
