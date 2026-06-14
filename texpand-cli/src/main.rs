@@ -128,7 +128,9 @@ fn main() -> anyhow::Result<()> {
                                         match renderer.show("texpand", &fields)? {
                                             Some(result) => {
                                                 for (key, val) in &result.values {
+                                                    // Inject both with prefix (form.path) and without (path)
                                                     vars.insert(format!("{}.{}", var.name, key), val.clone());
+                                                    vars.insert(key.clone(), val.clone());
                                                 }
                                             }
                                             None => std::process::exit(1),
