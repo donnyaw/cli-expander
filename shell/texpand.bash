@@ -2,9 +2,11 @@
 # Source this file from .bashrc:
 #   source /path/to/texpand.bash
 #
-# :hello[space]   → auto-expands inline (text only)
-# te:hello[Enter] → runs te :hello (no space needed)
-# te :ticket[Enter] → opens form TUI
+# Usage:
+#   :hello[space]   → auto-expands inline (text triggers only)
+#   :ticket[Enter]  → opens form TUI (colon triggers command_not_found_handle)
+#   te:ticket[Enter] → same as above
+#   te :ticket[Enter] → same as above
 
 _texpand_cmd="te"
 
@@ -24,13 +26,8 @@ _texpand_on_space() {
     READLINE_POINT=${#READLINE_LINE}
 }
 
-# Allow :hello[Enter] and te:hello[Enter] — intercepts command_not_found
-# Falls back to system /usr/lib/command-not-found for other unknown commands
+# Catch :trigger[Enter] and te:trigger[Enter] directly
 command_not_found_handle() {
-    if [[ "$1" == te:* ]]; then
-        te ":${1#te:}"
-        return $?
-    fi
     if [[ "$1" == :* ]]; then
         te "$1"
         return $?
