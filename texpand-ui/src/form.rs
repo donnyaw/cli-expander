@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::io::IsTerminal;
 use std::sync::{Arc, Mutex};
 
 #[derive(Debug, Clone, PartialEq)]
@@ -42,6 +43,11 @@ fn render_cursive_form(title: &str, fields: &[FormField]) -> anyhow::Result<Opti
     use cursive::traits::{Nameable, Resizable};
     use cursive::views::{Button, Dialog, EditView, LinearLayout, ScrollView, SelectView, TextArea, TextView};
     use cursive::Cursive;
+
+    // Check if running in a terminal before attempting Cursive
+    if !std::io::stdout().is_terminal() {
+        anyhow::bail!("Form requires an interactive terminal. Run in a terminal emulator (not piped or headless).");
+    }
 
     let result = Arc::new(Mutex::new(None::<FormResult>));
 
