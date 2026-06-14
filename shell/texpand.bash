@@ -24,11 +24,15 @@ _texpand_on_space() {
     READLINE_POINT=${#READLINE_LINE}
 }
 
-# Allow te:hello[Enter] — intercepts command_not_found
+# Allow :hello[Enter] and te:hello[Enter] — intercepts command_not_found
 # Falls back to system /usr/lib/command-not-found for other unknown commands
 command_not_found_handle() {
     if [[ "$1" == te:* ]]; then
         te ":${1#te:}"
+        return $?
+    fi
+    if [[ "$1" == :* ]]; then
+        te "$1"
         return $?
     fi
     if [ -x /usr/lib/command-not-found ]; then
