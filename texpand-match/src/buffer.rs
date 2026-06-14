@@ -39,3 +39,48 @@ impl RollingBuffer {
         self.buffer.is_empty()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_push_and_content() {
+        let mut buf = RollingBuffer::new(10);
+        buf.push('h');
+        buf.push('e');
+        buf.push('l');
+        assert_eq!(buf.content(), "hel");
+        assert!(!buf.is_empty());
+    }
+
+    #[test]
+    fn test_max_len() {
+        let mut buf = RollingBuffer::new(5);
+        for c in "hello world".chars() {
+            buf.push(c);
+        }
+        assert_eq!(buf.content(), "world");
+        assert_eq!(buf.len(), 5);
+    }
+
+    #[test]
+    fn test_ends_with() {
+        let mut buf = RollingBuffer::new(20);
+        for c in "type :greet".chars() {
+            buf.push(c);
+        }
+        assert!(buf.ends_with(":greet"));
+        assert!(!buf.ends_with(":nope"));
+    }
+
+    #[test]
+    fn test_clear() {
+        let mut buf = RollingBuffer::new(10);
+        buf.push('a');
+        buf.push('b');
+        buf.clear();
+        assert!(buf.is_empty());
+        assert_eq!(buf.len(), 0);
+    }
+}
