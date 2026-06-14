@@ -37,6 +37,11 @@ impl FormRenderer for CursiveFormRenderer {
     }
 }
 
+fn is_interactive_terminal() -> bool {
+    std::io::stdout().is_terminal()
+        && std::env::var("TERM").ok().is_some_and(|t| t != "dumb")
+}
+
 fn render_cursive_form(title: &str, fields: &[FormField]) -> anyhow::Result<Option<FormResult>> {
     use cursive::align::HAlign;
     use cursive::event::Key;
@@ -44,14 +49,27 @@ fn render_cursive_form(title: &str, fields: &[FormField]) -> anyhow::Result<Opti
     use cursive::views::{Button, Dialog, EditView, LinearLayout, ScrollView, SelectView, TextArea, TextView};
     use cursive::Cursive;
 
-    // Check if running in a terminal before attempting Cursive
-    if !std::io::stdout().is_terminal() {
-        anyhow::bail!("Form requires an interactive terminal. Run in a terminal emulator (not piped or headless).");
+    if !is_interactive_terminal() {
+        anyhow::bail!("Form requires an interactive terminal. Ensure TERM is set (e.g. TERM=xterm-256color) and you are running in a real terminal, not a pipe.");
     }
 
     let result = Arc::new(Mutex::new(None::<FormResult>));
 
-    let mut siv = cursive::default();
+    let mut siv = match std::panic::catch_unwind(|| {
+        cursive::default()
+    }) {
+        Ok(s) => s,
+        Err(e) => {
+            let msg = if let Some(s) = e.downcast_ref::<&str>() {
+                s.to_string()
+            } else if let Some(s) = e.downcast_ref::<String>() {
+                s.clone()
+            } else {
+                "unknown error (terminal may not support TUI)".to_string()
+            };
+            anyhow::bail!("Failed to initialize terminal UI: {}. Try setting TERM=xterm-256color or running in a different terminal.", msg);
+        }
+    };
     let mut layout = LinearLayout::vertical();
 
     for field in fields {

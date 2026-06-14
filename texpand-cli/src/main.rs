@@ -92,16 +92,27 @@ fn main() -> anyhow::Result<()> {
                 Some(m) => {
                     if let Some(ref form_layout) = m.form {
                         // This match has a form — render it via Cursive UI
+                        eprintln!("[debug] Opening form with layout: {}", form_layout.lines().next().unwrap_or("(empty)"));
                         let fields = build_form_fields(m.form_fields.as_ref());
+                        eprintln!("[debug] Built {} form fields", fields.len());
+
                         let renderer = texpand_ui::CursiveFormRenderer;
-                        match renderer.show("texpand", &fields)? {
-                            Some(result) => {
+                        let form_result = renderer.show("texpand", &fields);
+                        match form_result {
+                            Ok(Some(result)) => {
                                 let output = texpand_render::FormExtension::render_form(
-                                    form_layout, &m.form_fields.unwrap_or_default(), &result.values
+                                    form_layout, &m.form_fields.as_ref().cloned().unwrap_or_default(), &result.values
                                 );
                                 println!("{}", output);
                             }
-                            None => std::process::exit(1),
+                            Ok(None) => {
+                                eprintln!("[debug] Form cancelled by user");
+                                std::process::exit(1);
+                            }
+                            Err(e) => {
+                                eprintln!("[debug] Form error: {}", e);
+                                return Err(e);
+                            }
                         }
                     } else if let Some(ref replace) = m.replace {
                         // Static replacement — resolve variables
