@@ -118,8 +118,31 @@ fn main() -> anyhow::Result<()> {
                         let mut vars = HashMap::new();
 
                         if let Some(ref var_defs) = m.vars {
+                            // Check for form variables first
+                            for var in var_defs {
+                                if var.var_type == "form" {
+                                    let fields = build_fields_from_form_var(var);
+
+                                    if !fields.is_empty() {
+                                        let renderer = texpand_ui::CursiveFormRenderer;
+                                        match renderer.show("texpand", &fields)? {
+                                            Some(result) => {
+                                                for (key, val) in &result.values {
+                                                    vars.insert(format!("{}.{}", var.name, key), val.clone());
+                                                }
+                                            }
+                                            None => std::process::exit(1),
+                                        }
+                                    }
+                                    break;
+                                }
+                            }
+
+                            // Resolve remaining variables (date, clipboard, shell)
                             if let Ok(resolved) = engine.resolve_all(var_defs) {
-                                vars = resolved;
+                                for (key, val) in resolved {
+                                    vars.entry(key).or_insert(val);
+                                }
                             }
                         }
 
@@ -207,6 +230,107 @@ fn truncate(s: &str, max: usize) -> String {
     } else {
         format!("{}...", &s[..max.saturating_sub(3)])
     }
+}
+
+/// Build form fields from a form variable definition (verbose syntax)
+fn build_fields_from_form_var(var: &texpand_config::VariableDef) -> Vec<texpand_ui::FormField> {
+    use serde_norway::Value;
+    use std::collections::HashMap;
+
+    let mut result = Vec::new();
+    let params = match var.params.as_ref() {
+        Some(p) => p,
+        None => return result,
+    };
+
+    let layout = match params.get("layout").and_then(|v| v.as_str()) {
+        Some(l) => l,
+        None => return result,
+    };
+
+    // Extract field names from layout [[field]] patterns with labels
+    let mut field_meta: Vec<(String, String)> = Vec::new();
+    for line in layout.lines() {
+        let trimmed = line.trim();
+        if let Some(start) = trimmed.find("[[") {
+            if let Some(end) = trimmed[start..].find("]]") {
+                let fname = trimmed[start+2..start+end].trim().to_string();
+                let flabel = trimmed[..start].trim().to_string();
+                if !fname.is_empty() {
+                    let label = if flabel.ends_with(':') { flabel }
+                                else if flabel.is_empty() { format!("{}:", fname) }
+                                else { format!("{}:", flabel) };
+                    field_meta.push((fname, label));
+                }
+            }
+        }
+    }
+
+    // Parse field configs from params.fields mapping
+    let mut field_configs: HashMap<String, HashMap<String, Value>> = HashMap::new();
+    if let Some(fields_val) = params.get("fields") {
+        if let Some(mapping) = fields_val.as_mapping() {
+            for (key_val, cfg_val) in mapping.iter() {
+                if let (Some(fname), Some(cfg_map)) = (key_val.as_str(), cfg_val.as_mapping()) {
+                    let mut cfg = HashMap::new();
+                    for (ck, cv) in cfg_map.iter() {
+                        if let Some(ck_str) = ck.as_str() {
+                            cfg.insert(ck_str.to_string(), cv.clone());
+                        }
+                    }
+                    field_configs.insert(fname.to_string(), cfg);
+                }
+            }
+        }
+    }
+
+    for (fname, label) in field_meta {
+        let mut field_type = texpand_ui::FieldType::Text;
+        let mut multiline = false;
+        let mut default = None;
+        let mut placeholder = None;
+        let mut values = None;
+
+        if let Some(cfg) = field_configs.get(&fname) {
+            if let Some(t) = cfg.get("type").and_then(|v| v.as_str()) {
+                match t {
+                    "choice" => field_type = texpand_ui::FieldType::Choice,
+                    "list" => field_type = texpand_ui::FieldType::List,
+                    _ => {}
+                }
+            }
+            if let Some(v) = cfg.get("multiline").and_then(|v| v.as_bool()) {
+                multiline = v;
+            }
+            if let Some(v) = cfg.get("default").and_then(|v| v.as_str()) {
+                default = Some(v.to_string());
+            }
+            if let Some(v) = cfg.get("placeholder").and_then(|v| v.as_str()) {
+                placeholder = Some(v.to_string());
+            }
+            if let Some(v) = cfg.get("values") {
+                if let Some(seq) = v.as_sequence() {
+                    let vlist: Vec<String> = seq.iter()
+                        .filter_map(|item| item.as_str().map(String::from))
+                        .collect();
+                    if !vlist.is_empty() {
+                        values = Some(vlist);
+                    }
+                }
+            }
+        }
+
+        result.push(texpand_ui::FormField {
+            name: fname,
+            label,
+            field_type,
+            default,
+            placeholder,
+            values,
+            multiline,
+        });
+    }
+    result
 }
 
 fn build_form_fields(
