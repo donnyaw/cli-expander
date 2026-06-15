@@ -49,7 +49,7 @@ fn render_cursive_form(title: &str, fields: &[FormField]) -> anyhow::Result<Opti
     use cursive::align::HAlign;
     use cursive::event::Key;
     use cursive::traits::{Nameable, Resizable};
-    use cursive::views::{Button, Dialog, EditView, LinearLayout, ScrollView, SelectView, TextArea, TextView};
+    use cursive::views::{Button, Dialog, EditView, LinearLayout, PaddedView, ScrollView, SelectView, TextArea, TextView};
     use cursive::Cursive;
 
     if !is_interactive_terminal() {
@@ -80,14 +80,23 @@ fn render_cursive_form(title: &str, fields: &[FormField]) -> anyhow::Result<Opti
     let mut layout = LinearLayout::vertical();
 
     for field in fields {
-        // Visually distinguish dependent fields with > prefix and indent
         let is_dependent = field.depends_on.is_some();
-        let label = if is_dependent {
-            format!("  > {}", field.label.trim())
-        } else {
-            field.label.clone()
-        };
         let name = field.name.clone();
+
+        // Helper macro: wrap in PaddedView if dependent
+        macro_rules! add_field {
+            ($label:expr, $widget:expr) => {{
+                let lbl = TextView::new($label);
+                let wgt = $widget;
+                if is_dependent {
+                    layout.add_child(PaddedView::lrtb(4, 0, 0, 0, lbl));
+                    layout.add_child(PaddedView::lrtb(4, 0, 0, 0, wgt));
+                } else {
+                    layout.add_child(lbl);
+                    layout.add_child(wgt);
+                }
+            }};
+        }
 
         if field.field_type == FieldType::Choice || field.field_type == FieldType::List {
             let mut select = SelectView::new();
@@ -103,8 +112,7 @@ fn render_cursive_form(title: &str, fields: &[FormField]) -> anyhow::Result<Opti
                 select.set_selection(idx);
             }
 
-            layout.add_child(TextView::new(label));
-            layout.add_child(select.with_name(name.clone()).min_width(40).min_height(3));
+            add_field!(field.label.as_str(), select.with_name(name.clone()).min_width(40).min_height(3));
 
             // Record cascading relationship
             if let Some(ref dep_name) = field.depends_on {
@@ -116,14 +124,12 @@ fn render_cursive_form(title: &str, fields: &[FormField]) -> anyhow::Result<Opti
             let textarea = TextArea::new()
                 .content(field.default.as_deref().unwrap_or(""));
 
-            layout.add_child(TextView::new(label));
-            layout.add_child(textarea.with_name(name.clone()).min_width(50).min_height(5));
+            add_field!(field.label.as_str(), textarea.with_name(name.clone()).min_width(50).min_height(5));
         } else {
             let edit = EditView::new()
                 .content(field.placeholder.as_deref().unwrap_or(""));
 
-            layout.add_child(TextView::new(label));
-            layout.add_child(edit.with_name(name.clone()).min_width(50));
+            add_field!(field.label.as_str(), edit.with_name(name.clone()).min_width(50));
         }
     }
 
