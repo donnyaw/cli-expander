@@ -49,7 +49,7 @@ fn render_cursive_form(title: &str, fields: &[FormField]) -> anyhow::Result<Opti
     use cursive::event::Key;
     use cursive::traits::{Nameable, Resizable};
     use cursive::views::{
-        Button, Dialog, EditView, LinearLayout, PaddedView, ScrollView, SelectView, TextArea,
+        Button, Dialog, EditView, LinearLayout, ScrollView, SelectView, TextArea,
         TextView,
     };
     use cursive::Cursive;
@@ -78,50 +78,25 @@ fn render_cursive_form(title: &str, fields: &[FormField]) -> anyhow::Result<Opti
     let mut layout = LinearLayout::vertical();
 
     for field in fields {
-        let is_dependent = field.depends_on.is_some();
+        let label = field.label.clone();
         let name = field.name.clone();
-
-        // Macro helper: wrap in PaddedView if dependent
-        macro_rules! add_field {
-            ($lbl:expr, $wgt:expr) => {{
-                let lv = TextView::new($lbl);
-                let wv = $wgt;
-                if is_dependent {
-                    layout.add_child(PaddedView::lrtb(4, 0, 0, 0, lv));
-                    layout.add_child(PaddedView::lrtb(4, 0, 0, 0, wv));
-                } else {
-                    layout.add_child(lv);
-                    layout.add_child(wv);
-                }
-            }};
-        }
 
         if field.field_type == FieldType::Choice || field.field_type == FieldType::List {
             let mut select = SelectView::new();
             if let Some(ref values) = field.values {
-                if is_dependent {
-                    for v in values {
-                        select.add_item(format!("  {}", v), v.clone());
-                    }
-                } else {
-                    for v in values {
-                        select.add_item_str(v.clone());
-                    }
+                for v in values {
+                    select.add_item_str(v.clone());
                 }
             }
             if let Some(ref default) = field.default {
-                let idx = field
-                    .values
-                    .as_ref()
+                let idx = field.values.as_ref()
                     .and_then(|v| v.iter().position(|x| x == default))
                     .unwrap_or(0);
                 select.set_selection(idx);
             }
 
-            add_field!(
-                field.label.as_str(),
-                select.with_name(name.clone()).min_width(40).min_height(3)
-            );
+            layout.add_child(TextView::new(label));
+            layout.add_child(select.with_name(name.clone()).min_width(40).min_height(3));
 
             if let Some(ref dep_name) = field.depends_on {
                 if let Some(ref dep_map) = field.depends_map {
@@ -129,18 +104,17 @@ fn render_cursive_form(title: &str, fields: &[FormField]) -> anyhow::Result<Opti
                 }
             }
         } else if field.multiline {
-            let textarea =
-                TextArea::new().content(field.default.as_deref().unwrap_or(""));
-            add_field!(
-                field.label.as_str(),
-                textarea
-                    .with_name(name.clone())
-                    .min_width(50)
-                    .min_height(5)
-            );
+            let textarea = TextArea::new()
+                .content(field.default.as_deref().unwrap_or(""));
+
+            layout.add_child(TextView::new(label));
+            layout.add_child(textarea.with_name(name.clone()).min_width(50).min_height(5));
         } else {
-            let edit = EditView::new().content(field.placeholder.as_deref().unwrap_or(""));
-            add_field!(field.label.as_str(), edit.with_name(name.clone()).min_width(50));
+            let edit = EditView::new()
+                .content(field.placeholder.as_deref().unwrap_or(""));
+
+            layout.add_child(TextView::new(label));
+            layout.add_child(edit.with_name(name.clone()).min_width(50));
         }
     }
 

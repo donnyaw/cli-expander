@@ -150,7 +150,7 @@ fn main() -> anyhow::Result<()> {
 
                         let template = texpand_render::Template::new(replace);
                         let output = template.render(&vars);
-                        println!("{}", output);
+                                println!("{}", output);
                     }
                 }
                 None => {
@@ -198,7 +198,7 @@ fn main() -> anyhow::Result<()> {
                     let output = texpand_render::FormExtension::render_form(
                         &layout, &HashMap::new(), &result.values
                     );
-                    println!("{}", output);
+                                println!("{}", output);
                 }
                 None => std::process::exit(1),
             }
