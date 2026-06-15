@@ -26,11 +26,18 @@ _texpand_on_space() {
     READLINE_POINT=${#READLINE_LINE}
 }
 
-# Catch :trigger[Enter] and te:trigger[Enter] directly
+# Catch :trigger[Enter] — uses script(1) to isolate Cursive's terminal from shell
 command_not_found_handle() {
     if [[ "$1" == :* ]]; then
-        te "$1"
-        return $?
+        local rc
+        if [ -x /usr/bin/script ]; then
+            script -q -c "te $1 2>/dev/null" /dev/null
+            rc=$?
+        else
+            te "$1"
+            rc=$?
+        fi
+        return $rc
     fi
     if [ -x /usr/lib/command-not-found ]; then
         /usr/lib/command-not-found -- "$1"

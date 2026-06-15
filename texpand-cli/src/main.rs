@@ -101,7 +101,7 @@ fn main() -> anyhow::Result<()> {
                                 let output = texpand_render::FormExtension::render_form(
                                     form_layout, &m.form_fields.as_ref().cloned().unwrap_or_default(), &result.values
                                 );
-                                println!("{}", output);
+                                eprintln!("{}", output);
                             }
                             Ok(None) => {
                                 eprintln!("[debug] Form cancelled by user");
@@ -150,7 +150,7 @@ fn main() -> anyhow::Result<()> {
 
                         let template = texpand_render::Template::new(replace);
                         let output = template.render(&vars);
-                        println!("{}", output);
+                        eprintln!("{}", output);
                     }
                 }
                 None => {
@@ -198,7 +198,7 @@ fn main() -> anyhow::Result<()> {
                     let output = texpand_render::FormExtension::render_form(
                         &layout, &HashMap::new(), &result.values
                     );
-                    println!("{}", output);
+                    eprintln!("{}", output);
                 }
                 None => std::process::exit(1),
             }
