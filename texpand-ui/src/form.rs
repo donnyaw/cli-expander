@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use std::io::{IsTerminal, Write};
+use std::io::IsTerminal;
 use std::sync::{Arc, Mutex};
 
 #[derive(Debug, Clone, PartialEq)]
@@ -223,15 +223,6 @@ fn render_cursive_form(title: &str, fields: &[FormField]) -> anyhow::Result<Opti
     });
 
     siv.run();
-
-    // Restore terminal state after Cursive exits
-    let _ = std::io::stdout().flush();
-    let _ = std::process::Command::new("stty")
-        .arg("sane")
-        .stdin(std::process::Stdio::inherit())
-        .stdout(std::process::Stdio::inherit())
-        .stderr(std::process::Stdio::inherit())
-        .status();
 
     let result_ref = result.lock().unwrap().take();
     Ok(result_ref)
