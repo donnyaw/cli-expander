@@ -196,3 +196,28 @@ matches:
     replace: "🔥"
   - trigger: ":emoji"
     replace: "🎉"
+
+  # Cascading dropdown — selecting parent changes child options
+  - trigger: ":cascade"
+    replace: "Selected {{cat}}: {{item}}"
+    vars:
+      - name: form
+        type: form
+        params:
+          layout: |
+            Category: [[cat]]
+            Item: [[item]]
+          fields:
+            cat:
+              type: choice
+              values:
+                - Fruits
+                - Animals
+                - Colors
+            item:
+              type: choice
+              depends_on: cat
+              values:
+                Fruits: [Apple, Banana, Cherry, Durian]
+                Animals: [Cat, Dog, Elephant, Fox]
+                Colors: [Red, Green, Blue, Yellow]

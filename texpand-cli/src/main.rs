@@ -188,6 +188,8 @@ fn main() -> anyhow::Result<()> {
                     placeholder: Some("Type here...".to_string()),
                     values: None,
                     multiline: false,
+                    depends_on: None,
+                    depends_map: None,
                 }
             ];
             let renderer = texpand_ui::CursiveFormRenderer;
@@ -235,6 +237,23 @@ fn truncate(s: &str, max: usize) -> String {
 }
 
 /// Build form fields from a form variable definition (verbose syntax)
+/// Parse a mapping of parent_value -> child_values from a serde_norway Value
+fn parse_depends_map(val: &serde_norway::Value) -> Option<std::collections::HashMap<String, Vec<String>>> {
+    let mapping = val.as_mapping()?;
+    let mut result = std::collections::HashMap::new();
+    for (key_val, vals_val) in mapping.iter() {
+        let key = key_val.as_str()?.to_string();
+        let seq = vals_val.as_sequence()?;
+        let list: Vec<String> = seq.iter()
+            .filter_map(|item| item.as_str().map(String::from))
+            .collect();
+        if !list.is_empty() {
+            result.insert(key, list);
+        }
+    }
+    Some(result)
+}
+
 fn build_fields_from_form_var(var: &texpand_config::VariableDef) -> Vec<texpand_ui::FormField> {
     use serde_norway::Value;
     use std::collections::HashMap;
@@ -322,6 +341,19 @@ fn build_fields_from_form_var(var: &texpand_config::VariableDef) -> Vec<texpand_
             }
         }
 
+        // Check for depends_on and depends_map
+        let mut depends_on = None;
+        let mut depends_map = None;
+        if let Some(cfg) = field_configs.get(&fname) {
+            if let Some(v) = cfg.get("depends_on").and_then(|v| v.as_str()) {
+                depends_on = Some(v.to_string());
+                if let Some(v) = cfg.get("values") {
+                    depends_map = parse_depends_map(v);
+                    values = None; // values come from depends_map instead
+                }
+            }
+        }
+
         result.push(texpand_ui::FormField {
             name: fname,
             label,
@@ -330,6 +362,8 @@ fn build_fields_from_form_var(var: &texpand_config::VariableDef) -> Vec<texpand_
             placeholder,
             values,
             multiline,
+            depends_on,
+            depends_map,
         });
     }
     result
@@ -353,14 +387,24 @@ fn build_form_fields(
                 })
             });
 
+            let depends_on = config.depends_on.clone();
+            let depends_map = if config.depends_on.is_some() {
+                config.values.as_ref().and_then(parse_depends_map)
+            } else {
+                None
+            };
+            let resolved_values = if depends_map.is_some() { None } else { values };
+
             result.push(texpand_ui::FormField {
                 name: name.clone(),
                 label: format!("{}:", name),
                 field_type,
                 default: config.default.clone(),
                 placeholder: config.placeholder.clone(),
-                values,
+                values: resolved_values,
                 multiline: config.multiline.unwrap_or(false),
+                depends_on,
+                depends_map,
             });
         }
     }

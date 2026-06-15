@@ -18,6 +18,9 @@ pub struct FormField {
     pub placeholder: Option<String>,
     pub values: Option<Vec<String>>,
     pub multiline: bool,
+    pub depends_on: Option<String>,
+    /// For cascading selects: maps parent_value -> child_values
+    pub depends_map: Option<HashMap<String, Vec<String>>>,
 }
 
 #[derive(Debug, Clone)]
@@ -70,6 +73,10 @@ fn render_cursive_form(title: &str, fields: &[FormField]) -> anyhow::Result<Opti
             anyhow::bail!("Failed to initialize terminal UI: {}. Try setting TERM=xterm-256color or running in a different terminal.", msg);
         }
     };
+
+    // Collect cascading relationships: (parent_name, child_name, depends_map)
+    let mut cascades: Vec<(String, String, HashMap<String, Vec<String>>)> = Vec::new();
+
     let mut layout = LinearLayout::vertical();
 
     for field in fields {
@@ -92,6 +99,13 @@ fn render_cursive_form(title: &str, fields: &[FormField]) -> anyhow::Result<Opti
 
             layout.add_child(TextView::new(label));
             layout.add_child(select.with_name(name.clone()).min_width(40).min_height(3));
+
+            // Record cascading relationship
+            if let Some(ref dep_name) = field.depends_on {
+                if let Some(ref dep_map) = field.depends_map {
+                    cascades.push((dep_name.clone(), name.clone(), dep_map.clone()));
+                }
+            }
         } else if field.multiline {
             let textarea = TextArea::new()
                 .content(field.default.as_deref().unwrap_or(""));
@@ -154,6 +168,26 @@ fn render_cursive_form(title: &str, fields: &[FormField]) -> anyhow::Result<Opti
         .h_align(HAlign::Center);
 
     siv.add_layer(dialog);
+
+    // Wire up cascading selects after views are added to Cursive
+    for (parent_name, child_name, dep_map) in &cascades {
+        let child_name = child_name.clone();
+        let dep_map = dep_map.clone();
+        siv.call_on_name(parent_name, |parent: &mut SelectView<String>| {
+            parent.set_on_select(move |s: &mut Cursive, selected: &String| {
+                s.call_on_name(&child_name, |child: &mut SelectView<String>| {
+                    child.clear();
+                    if let Some(items) = dep_map.get(selected) {
+                        for item in items {
+                            child.add_item_str(item.clone());
+                        }
+                    }
+                    child.set_selection(0);
+                });
+            });
+        });
+    }
+
     siv.set_fps(30);
 
     siv.add_global_callback(Key::Esc, |s| {

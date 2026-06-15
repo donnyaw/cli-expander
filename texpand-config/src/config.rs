@@ -38,6 +38,8 @@ pub struct FieldConfig {
     pub values: Option<serde_norway::Value>,
     #[serde(rename = "trim_string_values")]
     pub trim_string_values: Option<bool>,
+    #[serde(rename = "depends_on")]
+    pub depends_on: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

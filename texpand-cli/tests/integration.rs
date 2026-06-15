@@ -104,6 +104,7 @@ fn test_form_extension_integration() {
         placeholder: Some("Your name".to_string()),
         values: None,
         trim_string_values: None,
+        depends_on: None,
     });
 
     let mut values = HashMap::new();

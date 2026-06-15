@@ -30,9 +30,10 @@ mod tests {
             multiline: None,
             default: None,
             placeholder: Some("Enter name".to_string()),
-            values: None,
-            trim_string_values: None,
-        });
+        values: None,
+        trim_string_values: None,
+        depends_on: None,
+    });
 
         let mut values = HashMap::new();
         values.insert("name".to_string(), "Alice".to_string());
