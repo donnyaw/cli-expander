@@ -101,8 +101,14 @@ fn render_cursive_form(title: &str, fields: &[FormField]) -> anyhow::Result<Opti
         if field.field_type == FieldType::Choice || field.field_type == FieldType::List {
             let mut select = SelectView::new();
             if let Some(ref values) = field.values {
-                for v in values {
-                    select.add_item_str(v.clone());
+                if is_dependent {
+                    for v in values {
+                        select.add_item(format!("  {}", v), v.clone());
+                    }
+                } else {
+                    for v in values {
+                        select.add_item_str(v.clone());
+                    }
                 }
             }
             if let Some(ref default) = field.default {
@@ -191,7 +197,7 @@ fn render_cursive_form(title: &str, fields: &[FormField]) -> anyhow::Result<Opti
                     child.clear();
                     if let Some(items) = dep_map.get(selected) {
                         for item in items {
-                            child.add_item_str(item.clone());
+                            child.add_item(format!("  {}", item), item.clone());
                         }
                     }
                     child.set_selection(0);
