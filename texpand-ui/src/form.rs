@@ -40,8 +40,17 @@ impl FormRenderer for CursiveFormRenderer {
 }
 
 fn is_interactive_terminal() -> bool {
-    std::io::stdout().is_terminal()
-        && std::env::var("TERM").ok().is_some_and(|t| t != "dumb")
+    #[cfg(unix)]
+    let has_terminal = std::fs::OpenOptions::new()
+        .read(true)
+        .write(true)
+        .open("/dev/tty")
+        .is_ok_and(|tty| tty.is_terminal());
+
+    #[cfg(not(unix))]
+    let has_terminal = std::io::stdout().is_terminal();
+
+    has_terminal && std::env::var("TERM").ok().is_some_and(|t| t != "dumb")
 }
 
 fn render_cursive_form(title: &str, fields: &[FormField]) -> anyhow::Result<Option<FormResult>> {
@@ -111,7 +120,7 @@ fn render_cursive_form(title: &str, fields: &[FormField]) -> anyhow::Result<Opti
             layout.add_child(textarea.with_name(name.clone()).min_width(50).min_height(5));
         } else {
             let edit = EditView::new()
-                .content(field.placeholder.as_deref().unwrap_or(""));
+                .content(field.default.as_deref().or(field.placeholder.as_deref()).unwrap_or(""));
 
             layout.add_child(TextView::new(label));
             layout.add_child(edit.with_name(name.clone()).min_width(50));
