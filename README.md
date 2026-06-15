@@ -5,7 +5,8 @@ A terminal-native text expander with Espanso-compatible form support. Written in
 ## Features
 
 - **Trigger-based expansion** — Type `:hello` and have it expand to `Hello World!`
-- **Multi-field forms** — Interactive forms with text fields, multiline, choice dropdowns, and list selectors — all rendered in the terminal via Cursive
+- **Prompt-first workflow** — Type `:find[Space]`, fill a TUI form, then edit or run the generated command from the shell prompt
+- **Multi-field forms** — Interactive forms with text, password, checkbox, multiline, choice dropdowns, list selectors, and cascade dropdowns — all rendered in the terminal via Cursive
 - **Espanso-compatible config** — Use your existing Espanso `match/*.yml` files
 - **Variable system** — Date, clipboard, shell command, and form variable injection
 - **Shell plugins** — Expansion hooks for zsh, bash, and fish
@@ -50,6 +51,16 @@ texpand expand ":hello"
 ```
 
 ## Shell Integration
+
+The primary workflow is `:trigger[Space]`: the expansion is inserted into the
+current shell prompt so you can review or edit it before pressing Enter.
+
+```text
+:findname[Space]  # open form, insert generated find command into prompt
+```
+
+Avoid `:trigger[Enter]` for command builders. Enter executes the typed trigger
+as a shell command, while Space expands it into the editable command line.
 
 ### Zsh
 ```bash

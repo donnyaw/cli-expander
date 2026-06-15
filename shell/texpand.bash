@@ -3,10 +3,12 @@
 #   source /path/to/texpand.bash
 #
 # Usage:
-#   :hello[space]   → auto-expands inline (text triggers only)
-#   :ticket[Enter]  → opens form TUI (colon triggers command_not_found_handle)
-#   te:ticket[Enter] → same as above
-#   te :ticket[Enter] → same as above
+#   :hello[Space]   → expand inline into the current prompt
+#   :find[Space]    → open form TUI, then insert generated command into prompt
+#   Ctrl+T          → manually expand the current prompt buffer
+#
+# Space is the primary workflow. Press Enter only after the expansion is
+# visible in the prompt and you are ready to execute it.
 
 _texpand_cmd="te"
 
@@ -26,11 +28,12 @@ _texpand_on_space() {
     READLINE_POINT=${#READLINE_LINE}
 }
 
-# Catch :trigger[Enter] and te:trigger[Enter] directly
+# Avoid dumping generated command text above the prompt. Use Space/Ctrl+T so the
+# expansion lands in the editable command line first.
 command_not_found_handle() {
     if [[ "$1" == :* ]]; then
-        te "$1"
-        return $?
+        printf 'texpand: use %s[Space] to expand into the prompt, then press Enter to run it.\n' "$1" >&2
+        return 127
     fi
     if [ -x /usr/lib/command-not-found ]; then
         /usr/lib/command-not-found -- "$1"

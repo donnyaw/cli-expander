@@ -7,6 +7,8 @@ pub enum FieldType {
     Text,
     Choice,
     List,
+    Checkbox,
+    Password,
 }
 
 #[derive(Debug, Clone)]
@@ -58,7 +60,7 @@ fn render_cursive_form(title: &str, fields: &[FormField]) -> anyhow::Result<Opti
     use cursive::event::Key;
     use cursive::traits::{Nameable, Resizable};
     use cursive::views::{
-        Button, Dialog, EditView, LinearLayout, ScrollView, SelectView, TextArea,
+        Button, Checkbox, Dialog, EditView, LinearLayout, ScrollView, SelectView, TextArea,
         TextView,
     };
     use cursive::Cursive;
@@ -83,6 +85,7 @@ fn render_cursive_form(title: &str, fields: &[FormField]) -> anyhow::Result<Opti
 
     // Collect fields that need cascading: (parent_name, child_name, depends_map)
     let mut cascades: Vec<(String, String, HashMap<String, Vec<String>>)> = Vec::new();
+    let mut initial_values: HashMap<String, String> = HashMap::new();
 
     let mut layout = LinearLayout::vertical();
 
@@ -92,16 +95,31 @@ fn render_cursive_form(title: &str, fields: &[FormField]) -> anyhow::Result<Opti
 
         if field.field_type == FieldType::Choice || field.field_type == FieldType::List {
             let mut select = SelectView::new();
-            if let Some(ref values) = field.values {
+            let available_values = if let Some(ref dep_name) = field.depends_on {
+                initial_values
+                    .get(dep_name)
+                    .and_then(|parent_val| field.depends_map.as_ref()?.get(parent_val).cloned())
+            } else {
+                field.values.clone()
+            };
+
+            if let Some(ref values) = available_values {
                 for v in values {
-                    select.add_item_str(v.clone());
+                    if field.field_type == FieldType::List {
+                        select.add_item(format!("- {}", v), v.clone());
+                    } else {
+                        select.add_item_str(v.clone());
+                    }
                 }
             }
-            if let Some(ref default) = field.default {
-                let idx = field.values.as_ref()
-                    .and_then(|v| v.iter().position(|x| x == default))
-                    .unwrap_or(0);
-                select.set_selection(idx);
+            let idx = field
+                .default
+                .as_ref()
+                .and_then(|default| available_values.as_ref()?.iter().position(|x| x == default))
+                .unwrap_or(0);
+            select.set_selection(idx);
+            if let Some(value) = available_values.as_ref().and_then(|values| values.get(idx)) {
+                initial_values.insert(name.clone(), value.clone());
             }
 
             layout.add_child(TextView::new(label));
@@ -112,15 +130,39 @@ fn render_cursive_form(title: &str, fields: &[FormField]) -> anyhow::Result<Opti
                     cascades.push((dep_name.clone(), name.clone(), dep_map.clone()));
                 }
             }
+        } else if field.field_type == FieldType::Checkbox {
+            let checked = field.default.as_deref().is_some_and(|value| {
+                matches!(
+                    value.to_ascii_lowercase().as_str(),
+                    "true" | "yes" | "1" | "on"
+                )
+            });
+            let checkbox = if checked {
+                Checkbox::new().checked()
+            } else {
+                Checkbox::new()
+            };
+
+            layout.add_child(TextView::new(label));
+            layout.add_child(checkbox.with_name(name.clone()));
         } else if field.multiline {
-            let textarea = TextArea::new()
-                .content(field.default.as_deref().unwrap_or(""));
+            let textarea = TextArea::new().content(field.default.as_deref().unwrap_or(""));
 
             layout.add_child(TextView::new(label));
             layout.add_child(textarea.with_name(name.clone()).min_width(50).min_height(5));
         } else {
-            let edit = EditView::new()
-                .content(field.default.as_deref().or(field.placeholder.as_deref()).unwrap_or(""));
+            let edit = EditView::new().content(
+                field
+                    .default
+                    .as_deref()
+                    .or(field.placeholder.as_deref())
+                    .unwrap_or(""),
+            );
+            let edit = if field.field_type == FieldType::Password {
+                edit.secret()
+            } else {
+                edit
+            };
 
             layout.add_child(TextView::new(label));
             layout.add_child(edit.with_name(name.clone()).min_width(50));
@@ -135,8 +177,7 @@ fn render_cursive_form(title: &str, fields: &[FormField]) -> anyhow::Result<Opti
                 let mut values = HashMap::new();
                 for field in &fields {
                     let name = &field.name;
-                    if field.field_type == FieldType::Choice
-                        || field.field_type == FieldType::List
+                    if field.field_type == FieldType::Choice || field.field_type == FieldType::List
                     {
                         if let Some(val) = s
                             .call_on_name(name, |v: &mut SelectView<String>| {
@@ -146,15 +187,21 @@ fn render_cursive_form(title: &str, fields: &[FormField]) -> anyhow::Result<Opti
                         {
                             values.insert(name.clone(), val);
                         }
+                    } else if field.field_type == FieldType::Checkbox {
+                        if let Some(checked) =
+                            s.call_on_name(name, |v: &mut Checkbox| v.is_checked())
+                        {
+                            values.insert(name.clone(), checked.to_string());
+                        }
                     } else if field.multiline {
-                        if let Some(content) = s.call_on_name(name, |v: &mut TextArea| {
-                            v.get_content().to_string()
-                        }) {
+                        if let Some(content) =
+                            s.call_on_name(name, |v: &mut TextArea| v.get_content().to_string())
+                        {
                             values.insert(name.clone(), content);
                         }
-                    } else if let Some(content) = s.call_on_name(name, |v: &mut EditView| {
-                        (*v.get_content()).clone()
-                    }) {
+                    } else if let Some(content) =
+                        s.call_on_name(name, |v: &mut EditView| (*v.get_content()).clone())
+                    {
                         values.insert(name.clone(), content);
                     }
                 }

@@ -227,6 +227,166 @@ matches:
               default: "ls -lh"
               placeholder: "e.g. rm or chmod"
 
+  # Cascading find command builder
+  - trigger: ":findmenu"
+    replace: "find {{path}} {{predicate}} {{action}}"
+    vars:
+      - name: form
+        type: form
+        params:
+          layout: |
+            Path: [[path]]
+            Use case: [[usecase]]
+            Predicate: [[predicate]]
+            Action: [[action]]
+          fields:
+            path:
+              default: "."
+            usecase:
+              type: choice
+              values:
+                - By name
+                - By size
+                - By modified time
+                - By permissions
+                - Cleanup
+            predicate:
+              type: choice
+              depends_on: usecase
+              values:
+                By name:
+                  - "-type f -name '*.log'"
+                  - "-type f -name '*.sh'"
+                  - "-type d -name 'node_modules'"
+                By size:
+                  - "-type f -size +100M"
+                  - "-type f -size +1G"
+                  - "-type f -size -1M"
+                By modified time:
+                  - "-type f -mtime -1"
+                  - "-type f -mtime -7"
+                  - "-type f -mtime +30"
+                By permissions:
+                  - "-type f -perm /u=x"
+                  - "-type f -perm /g=w"
+                  - "-type f -perm 0777"
+                Cleanup:
+                  - "-type f -name '*.tmp'"
+                  - "-type f -empty"
+                  - "-type d -empty"
+            action:
+              type: choice
+              values:
+                - "-print"
+                - "-ls"
+                - "-delete"
+                - "-exec ls -lh {} \\;"
+
+  # Find by name with manual name/action inputs
+  - trigger: ":findname"
+    replace: "find {{path}} {{type}} -name '{{name}}' {{action}}"
+    vars:
+      - name: form
+        type: form
+        params:
+          layout: |
+            Path: [[path]]
+            Type: [[type]]
+            Name: [[name]]
+            Action: [[action]]
+          fields:
+            path:
+              default: "."
+            type:
+              type: choice
+              values:
+                - "-type f"
+                - "-type d"
+                - "-type l"
+                - "-type f -executable"
+            name:
+              default: "*"
+              placeholder: "*.log"
+            action:
+              default: "-print"
+              placeholder: "-print, -ls, -delete, -exec ls -lh {} \\;"
+
+  # Demonstrates every available form field type
+  - trigger: ":formdemo"
+    replace: |
+      text={{text}}
+      choice={{choice}}
+      list={{list}}
+      multiline={{multiline}}
+      checkbox={{confirm}}
+      password={{secret}}
+      cascade_parent={{category}}
+      cascade_child={{item}}
+    vars:
+      - name: form
+        type: form
+        params:
+          layout: |
+            Text input: [[text]]
+            Choice dropdown: [[choice]]
+            List dropdown: [[list]]
+            Multiline text: [[multiline]]
+            Checkbox: [[confirm]]
+            Password: [[secret]]
+            Cascade parent: [[category]]
+            Cascade child: [[item]]
+          fields:
+            text:
+              default: "hello world"
+              placeholder: "single-line text"
+            choice:
+              type: choice
+              values:
+                - Alpha
+                - Beta
+                - Gamma
+            list:
+              type: list
+              values:
+                - report.pdf
+                - notes.md
+                - script.sh
+                - image.png
+                - archive.tar.gz
+            multiline:
+              multiline: true
+              default: "line one\nline two"
+              placeholder: "multi-line text"
+            confirm:
+              type: checkbox
+              default: "true"
+            secret:
+              type: password
+              default: "demo-secret"
+              placeholder: "hidden input"
+            category:
+              type: choice
+              values:
+                - Fruits
+                - Animals
+                - Colors
+            item:
+              type: choice
+              depends_on: category
+              values:
+                Fruits:
+                  - Apple
+                  - Banana
+                  - Cherry
+                Animals:
+                  - Cat
+                  - Dog
+                  - Fox
+                Colors:
+                  - Red
+                  - Green
+                  - Blue
+
   # Cascading dropdown — selecting parent changes child options
   - trigger: ":cascade"
     replace: "Selected {{cat}}: {{item}}"

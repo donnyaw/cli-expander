@@ -317,6 +317,10 @@ fn build_fields_from_form_var(var: &texpand_config::VariableDef) -> Vec<texpand_
                 match t {
                     "choice" => field_type = texpand_ui::FieldType::Choice,
                     "list" => field_type = texpand_ui::FieldType::List,
+                    "checkbox" | "bool" | "boolean" => {
+                        field_type = texpand_ui::FieldType::Checkbox
+                    }
+                    "password" | "secret" => field_type = texpand_ui::FieldType::Password,
                     _ => {}
                 }
             }
@@ -378,6 +382,8 @@ fn build_form_fields(
             let field_type = match config.field_type.as_deref() {
                 Some("choice") => texpand_ui::FieldType::Choice,
                 Some("list") => texpand_ui::FieldType::List,
+                Some("checkbox" | "bool" | "boolean") => texpand_ui::FieldType::Checkbox,
+                Some("password" | "secret") => texpand_ui::FieldType::Password,
                 _ => texpand_ui::FieldType::Text,
             };
 
