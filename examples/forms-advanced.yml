@@ -221,3 +221,30 @@ matches:
                 Fruits: [Apple, Banana, Cherry, Durian]
                 Animals: [Cat, Dog, Elephant, Fox]
                 Colors: [Red, Green, Blue, Yellow]
+
+  # Non-cascading version for comparison
+  - trigger: ":cascade2"
+    replace: "Selected {{cat}}: {{item}}"
+    vars:
+      - name: form
+        type: form
+        params:
+          layout: |
+            Category: [[cat]]
+            Item: [[item]]
+          fields:
+            cat:
+              type: choice
+              values:
+                - Fruits
+                - Animals
+                - Colors
+            item:
+              type: choice
+              values:
+                - Apple
+                - Banana
+                - Cat
+                - Dog
+                - Red
+                - Green
