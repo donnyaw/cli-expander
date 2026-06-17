@@ -307,17 +307,15 @@ fn render_cursive_form(title: &str, fields: &[FormField]) -> anyhow::Result<Opti
     let option_store: Arc<Mutex<HashMap<String, Vec<String>>>> =
         Arc::new(Mutex::new(HashMap::new()));
 
-    // Extract clean title and trigger name
-    let display_title = title.find('\x1f').map_or(title, |pos| &title[..pos]);
-    let header_trigger = title.find('\x1f').map(|pos| &title[pos + 1..]);
+    // Build dialog title: "cli-expander" or "cli-expander ▸ :findx"
+    let base_title = title.find('\x1f').map_or(title, |pos| &title[..pos]);
+    let trigger_name = title.find('\x1f').map(|pos| &title[pos + 1..]);
+    let dialog_title = match trigger_name {
+        Some(t) => format!("{} ▸ {}", base_title, t),
+        None => base_title.to_string(),
+    };
 
     let mut layout = LinearLayout::vertical();
-
-    // Show trigger name prominently (if provided via show_with_trigger)
-    if let Some(trigger) = header_trigger {
-        layout.add_child(TextView::new(format!("  ▶  {}", trigger)));
-    }
-
     layout.add_child(TextView::new(
         "Tab next  |  / search dropdown  |  Ctrl+Enter submit",
     ));
@@ -494,7 +492,7 @@ fn render_cursive_form(title: &str, fields: &[FormField]) -> anyhow::Result<Opti
     layout.add_child(buttons);
 
     let dialog = Dialog::around(ScrollView::new(layout))
-        .title(display_title)
+        .title(dialog_title)
         .h_align(HAlign::Center);
 
     siv.add_layer(dialog);
