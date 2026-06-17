@@ -98,18 +98,18 @@ fn display_label(label: &str, searchable: bool) -> String {
     let base = clean_label(label);
     if searchable {
         if base.contains("/ search") || base.contains("/search") {
-            format!("  - {}:", base)
+            format!("{}:", base)
         } else {
-            format!("  - {} (/ search):", base)
+            format!("{} (/ search):", base)
         }
     } else {
-        format!("  - {}:", base)
+        format!("{}:", base)
     }
 }
 
 fn indented_view<V: cursive::View + 'static>(view: V) -> cursive::views::LinearLayout {
     cursive::views::LinearLayout::horizontal()
-        .child(cursive::views::TextView::new("   "))
+        .child(cursive::views::TextView::new("  "))
         .child(view)
 }
 
@@ -119,7 +119,7 @@ fn add_field_block<V: cursive::View + 'static>(
     view: V,
 ) {
     layout.add_child(cursive::views::TextView::new(""));
-    layout.add_child(cursive::views::TextView::new(label));
+    layout.add_child(cursive::views::TextView::new(&label));
     layout.add_child(indented_view(view));
 }
 
@@ -332,7 +332,7 @@ fn render_cursive_form(title: &str, fields: &[FormField]) -> anyhow::Result<Opti
         if field.section != current_section {
             if let Some(section) = &field.section {
                 layout.add_child(TextView::new(""));
-                layout.add_child(TextView::new(section.clone()));
+                layout.add_child(TextView::new(format!("── {} ──", section)));
             }
             current_section = field.section.clone();
         }
