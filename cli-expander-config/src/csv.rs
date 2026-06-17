@@ -21,6 +21,13 @@ impl TriggerRecord {
 
         for (path, config) in configs {
             let source = path.to_string_lossy().to_string();
+            // Category: use the parent directory name (e.g. "explore-features" from ".../explore-features/01-text-basics.yml")
+            let category = path
+                .parent()
+                .and_then(|p| p.file_name())
+                .and_then(|n| n.to_str())
+                .unwrap_or("uncategorized")
+                .to_string();
 
             for m in &config.matches {
                 for trigger in m.triggers() {
@@ -89,7 +96,7 @@ impl TriggerRecord {
                     records.push(TriggerRecord {
                         trigger: display_trigger,
                         description,
-                        category: source.clone(),
+                        category: category.clone(),
                         trigger_type,
                         source_file: source.clone(),
                     });
