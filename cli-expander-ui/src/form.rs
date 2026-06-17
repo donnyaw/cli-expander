@@ -72,9 +72,9 @@ fn filter_options(options: &[String], query: &str) -> Vec<String> {
 fn clean_label(label: &str) -> String {
     label
         .trim()
-        .trim_start_matches(|c: char| matches!(c, '-' | '*' | '|' | '║' | '│' | ' '))
+        .trim_start_matches(['-', '*', '|', '║', '│', ' '])
         .trim()
-        .trim_end_matches(|c: char| matches!(c, ':' | '|' | '║' | '│' | ' '))
+        .trim_end_matches([':', '|', '║', '│', ' '])
         .trim()
         .to_string()
 }
@@ -504,8 +504,9 @@ fn render_cursive_form(title: &str, fields: &[FormField]) -> anyhow::Result<Opti
 
     siv.set_fps(30);
 
-    // Don't bind Esc globally — it interferes with tmux paste (Esc byte triggers quit)
-    // User can cancel via the Cancel button or Ctrl+Z
+    // Swallow Enter globally so paste trailing newlines don't trigger Submit
+    // Users must click the Submit or Cancel button (Tab + Enter) to close the form
+    siv.add_global_callback(Key::Enter, |_| {});
 
     siv.run();
 

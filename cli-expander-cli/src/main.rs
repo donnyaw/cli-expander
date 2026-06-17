@@ -253,8 +253,8 @@ fn main() -> anyhow::Result<()> {
                 println!("{}", records_to_json(&records));
             } else {
                 println!("Available triggers:");
-                println!("{:<25} {:<55} {:<10} {}", "Trigger", "Description", "Type", "Category");
-                println!("{:-<25} {:-<55} {:-<10} {:-<15}", "", "", "", "");
+                println!("{:<25} {:<55} {:<10} Category", "Trigger", "Description", "Type");
+                println!("{:-<25} {:-<55} {:-<10} {:-<15}", "-", "-", "-", "-");
 
                 for r in &records {
                     let desc = if r.description.len() > 52 {
@@ -279,7 +279,7 @@ fn main() -> anyhow::Result<()> {
             let configs = cli_expander_config::Config::load_dir(&dir)?;
             let auto_records = TriggerRecord::from_configs(&configs);
 
-            let out_path = output.map(|p| PathBuf::from(p)).unwrap_or_else(|| {
+            let out_path = output.map(PathBuf::from).unwrap_or_else(|| {
                 let home = std::env::var("HOME").unwrap_or_default();
                 PathBuf::from(home).join(".config/cli-expander/triggers.csv")
             });
@@ -405,6 +405,7 @@ fn expand_path(path: &str) -> PathBuf {
     }
 }
 
+#[allow(dead_code)]
 fn truncate(s: &str, max: usize) -> String {
     if s.len() <= max {
         s.to_string()
