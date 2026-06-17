@@ -1,0 +1,3 @@
+// Syncthing ignore: dev folder contains AI-generated builds and plans
+// that should not be synced between machines.
+dev/
