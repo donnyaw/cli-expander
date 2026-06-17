@@ -509,3 +509,67 @@ matches:
                 - Dog
                 - Red
                 - Green
+
+  # Large choice list for / search testing
+  - trigger: ":bigdropdown"
+    replace: "Selected package: {{package}}"
+    vars:
+      - name: form
+        type: form
+        params:
+          layout: |
+            Package: [[package]]
+          fields:
+            package:
+              type: choice
+              values:
+                - nginx
+                - apache2
+                - postgresql
+                - mysql-server
+                - redis-server
+                - docker.io
+                - podman
+                - git
+                - curl
+                - wget
+                - ripgrep
+                - fd-find
+                - fzf
+                - tmux
+                - micro
+                - vim
+                - neovim
+                - htop
+                - btop
+                - jq
+                - yq
+                - openssh-server
+                - fail2ban
+                - ufw
+                - certbot
+                - python3
+                - python3-pip
+                - nodejs
+                - npm
+                - rustc
+                - cargo
+                - build-essential
+                - make
+                - cmake
+                - sqlite3
+                - rsync
+                - rclone
+                - syncthing
+                - unzip
+                - zip
+                - tar
+                - gzip
+                - zstd
+                - tree
+                - ncdu
+                - lsof
+                - strace
+                - tcpdump
+                - nmap
+                - dnsutils

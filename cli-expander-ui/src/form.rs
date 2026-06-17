@@ -55,13 +55,139 @@ fn is_interactive_terminal() -> bool {
     has_terminal && std::env::var("TERM").ok().is_some_and(|t| t != "dumb")
 }
 
+fn filter_options(options: &[String], query: &str) -> Vec<String> {
+    let needle = query.trim().to_lowercase();
+    if needle.is_empty() {
+        return options.to_vec();
+    }
+
+    options
+        .iter()
+        .filter(|value| value.to_lowercase().contains(&needle))
+        .cloned()
+        .collect()
+}
+
+fn populate_select(
+    select: &mut cursive::views::SelectView<String>,
+    values: &[String],
+    is_list: bool,
+) {
+    select.clear();
+    for value in values {
+        if is_list {
+            select.add_item(format!("- {}", value), value.clone());
+        } else {
+            select.add_item_str(value.clone());
+        }
+    }
+
+    if !values.is_empty() {
+        select.set_selection(0);
+    }
+}
+
+fn select_by_value(s: &mut cursive::Cursive, field_name: &str, value: &str) {
+    let _ = s.call_on_name(
+        field_name,
+        |view: &mut cursive::views::SelectView<String>| {
+            let items: Vec<String> = view.iter().map(|(_, item)| item.clone()).collect();
+            if let Some(index) = items.iter().position(|item| item.as_str() == value) {
+                view.set_selection(index);
+            }
+        },
+    );
+}
+
+fn refresh_search_results(
+    s: &mut cursive::Cursive,
+    results_name: &str,
+    options: &[String],
+    query: &str,
+) {
+    let filtered = filter_options(options, query);
+    let _ = s.call_on_name(
+        results_name,
+        |view: &mut cursive::views::SelectView<String>| {
+            view.clear();
+            for value in filtered {
+                view.add_item_str(value);
+            }
+            if !view.is_empty() {
+                view.set_selection(0);
+            }
+        },
+    );
+}
+
+fn open_dropdown_search(
+    s: &mut cursive::Cursive,
+    field_name: String,
+    field_label: String,
+    option_store: Arc<Mutex<HashMap<String, Vec<String>>>>,
+) {
+    use cursive::event::Key;
+    use cursive::traits::{Nameable, Resizable};
+    use cursive::views::{Dialog, EditView, LinearLayout, OnEventView, SelectView, TextView};
+
+    let options = option_store
+        .lock()
+        .ok()
+        .and_then(|store| store.get(&field_name).cloned())
+        .unwrap_or_default();
+
+    let results_name = format!("{}_search_results", field_name);
+    let query_name = format!("{}_search_query", field_name);
+
+    let results_name_for_edit = results_name.clone();
+    let options_for_edit = options.clone();
+    let search_input = EditView::new()
+        .on_edit(move |s, query, _| {
+            refresh_search_results(s, &results_name_for_edit, &options_for_edit, query);
+        })
+        .with_name(query_name)
+        .fixed_width(32);
+
+    let field_name_for_submit = field_name.clone();
+    let results = SelectView::<String>::new()
+        .on_submit(move |s, value| {
+            select_by_value(s, &field_name_for_submit, value);
+            s.pop_layer();
+        })
+        .with_name(results_name)
+        .min_height(8);
+
+    let layout = LinearLayout::vertical()
+        .child(TextView::new(format!(
+            "Search {} (substring)",
+            field_label.trim_end_matches(':')
+        )))
+        .child(search_input)
+        .child(results);
+
+    let results_name_for_initial = format!("{}_search_results", field_name);
+    let dialog = OnEventView::new(
+        Dialog::around(layout)
+            .title(format!("Search {}", field_label.trim_end_matches(':')))
+            .button("Close", |s| {
+                s.pop_layer();
+            }),
+    )
+    .on_event(Key::Esc, |s| {
+        s.pop_layer();
+    });
+
+    s.add_layer(dialog);
+    refresh_search_results(s, &results_name_for_initial, &options, "");
+}
+
 fn render_cursive_form(title: &str, fields: &[FormField]) -> anyhow::Result<Option<FormResult>> {
     use cursive::align::HAlign;
     use cursive::event::Key;
     use cursive::traits::{Nameable, Resizable};
     use cursive::views::{
-        Button, Checkbox, Dialog, EditView, LinearLayout, ScrollView, SelectView, TextArea,
-        TextView,
+        Button, Checkbox, Dialog, EditView, LinearLayout, OnEventView, ScrollView, SelectView,
+        TextArea, TextView,
     };
     use cursive::Cursive;
 
@@ -86,6 +212,8 @@ fn render_cursive_form(title: &str, fields: &[FormField]) -> anyhow::Result<Opti
     // Collect fields that need cascading: (parent_name, child_name, depends_map)
     let mut cascades: Vec<(String, String, HashMap<String, Vec<String>>)> = Vec::new();
     let mut initial_values: HashMap<String, String> = HashMap::new();
+    let option_store: Arc<Mutex<HashMap<String, Vec<String>>>> =
+        Arc::new(Mutex::new(HashMap::new()));
 
     let mut layout = LinearLayout::vertical();
 
@@ -94,6 +222,7 @@ fn render_cursive_form(title: &str, fields: &[FormField]) -> anyhow::Result<Opti
         let name = field.name.clone();
 
         if field.field_type == FieldType::Choice || field.field_type == FieldType::List {
+            let is_list = field.field_type == FieldType::List;
             let mut select = SelectView::new();
             let available_values = if let Some(ref dep_name) = field.depends_on {
                 initial_values
@@ -104,26 +233,45 @@ fn render_cursive_form(title: &str, fields: &[FormField]) -> anyhow::Result<Opti
             };
 
             if let Some(ref values) = available_values {
-                for v in values {
-                    if field.field_type == FieldType::List {
-                        select.add_item(format!("- {}", v), v.clone());
-                    } else {
-                        select.add_item_str(v.clone());
-                    }
+                if let Ok(mut store) = option_store.lock() {
+                    store.insert(name.clone(), values.clone());
                 }
+            } else {
+                if let Ok(mut store) = option_store.lock() {
+                    store.remove(&name);
+                }
+            }
+
+            if let Some(ref values) = available_values {
+                populate_select(&mut select, values, is_list);
             }
             let idx = field
                 .default
                 .as_ref()
                 .and_then(|default| available_values.as_ref()?.iter().position(|x| x == default))
                 .unwrap_or(0);
-            select.set_selection(idx);
+            if !select.is_empty() {
+                select.set_selection(idx.min(select.len().saturating_sub(1)));
+            }
             if let Some(value) = available_values.as_ref().and_then(|values| values.get(idx)) {
                 initial_values.insert(name.clone(), value.clone());
             }
 
+            let field_name = name.clone();
+            let field_label = label.clone();
             layout.add_child(TextView::new(label));
-            layout.add_child(select.with_name(name.clone()).min_width(40).min_height(3));
+            let option_store_for_search = option_store.clone();
+            let searchable =
+                OnEventView::new(select.with_name(name.clone()).min_width(40).min_height(3))
+                    .on_event('/', move |s| {
+                        open_dropdown_search(
+                            s,
+                            field_name.clone(),
+                            field_label.clone(),
+                            option_store_for_search.clone(),
+                        );
+                    });
+            layout.add_child(searchable);
 
             if let Some(ref dep_name) = field.depends_on {
                 if let Some(ref dep_map) = field.depends_map {
@@ -229,6 +377,7 @@ fn render_cursive_form(title: &str, fields: &[FormField]) -> anyhow::Result<Opti
     for (parent_name, child_name, dep_map) in &cascades {
         let child_name = child_name.clone();
         let dep_map = dep_map.clone();
+        let option_store = option_store.clone();
         let _ = siv.call_on_name(parent_name, |parent: &mut SelectView<String>| {
             parent.set_on_select(move |s: &mut Cursive, selected: &String| {
                 let _ = s.call_on_name(&child_name, |child: &mut SelectView<String>| {
@@ -242,6 +391,12 @@ fn render_cursive_form(title: &str, fields: &[FormField]) -> anyhow::Result<Opti
                         child.set_selection(0);
                     }
                 });
+                if let Ok(mut store) = option_store.lock() {
+                    store.insert(
+                        child_name.clone(),
+                        dep_map.get(selected).cloned().unwrap_or_default(),
+                    );
+                }
             });
         });
     }
@@ -256,4 +411,29 @@ fn render_cursive_form(title: &str, fields: &[FormField]) -> anyhow::Result<Opti
 
     let result_ref = result.lock().unwrap().take();
     Ok(result_ref)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::filter_options;
+
+    #[test]
+    fn test_filter_options_matches_substrings_case_insensitive() {
+        let options = vec![
+            "Alpha".to_string(),
+            "postgresql".to_string(),
+            "Fox".to_string(),
+        ];
+        assert_eq!(
+            filter_options(&options, "post"),
+            vec!["postgresql".to_string()]
+        );
+        assert_eq!(filter_options(&options, "FO"), vec!["Fox".to_string()]);
+    }
+
+    #[test]
+    fn test_filter_options_returns_all_for_empty_query() {
+        let options = vec!["A".to_string(), "B".to_string()];
+        assert_eq!(filter_options(&options, ""), options);
+    }
 }
