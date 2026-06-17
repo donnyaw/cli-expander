@@ -324,6 +324,8 @@ fn render_cursive_form(title: &str, fields: &[FormField]) -> anyhow::Result<Opti
     };
     layout.add_child(TextView::new(header_text.as_str()));
     layout.add_child(TextView::new("─".repeat(48)));
+    layout.add_child(TextView::new("Tab next  │  / search  │  Ctrl+Enter submit  │  Cancel button"));
+    layout.add_child(TextView::new("")); // spacer
 
     let mut current_section: Option<String> = None;
 
