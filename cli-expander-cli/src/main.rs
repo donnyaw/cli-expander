@@ -151,9 +151,8 @@ fn main() -> anyhow::Result<()> {
                         // This match has a form — render it via Cursive UI
                         let fields = build_form_fields(m.form_fields.as_ref());
 
-                        let trigger_name = m.matched_text.as_str();
                         let renderer = cli_expander_ui::CursiveFormRenderer;
-                        let form_result = renderer.show_with_trigger("cli-expander", trigger_name, &fields);
+                        let form_result = renderer.show("cli-expander", &fields);
                         match form_result {
                             Ok(Some(result)) => {
                                 let output = cli_expander_render::FormExtension::render_form(
@@ -194,7 +193,7 @@ fn main() -> anyhow::Result<()> {
 
                                     if !fields.is_empty() {
                                         let renderer = cli_expander_ui::CursiveFormRenderer;
-                                        let result = match renderer.show_with_trigger("cli-expander", &input, &fields) {
+                                        let result = match renderer.show("cli-expander", &fields) {
                                             Ok(Some(result)) => result,
                                             Ok(None) => std::process::exit(1),
                                             Err(e) => {

@@ -307,25 +307,13 @@ fn render_cursive_form(title: &str, fields: &[FormField]) -> anyhow::Result<Opti
     let option_store: Arc<Mutex<HashMap<String, Vec<String>>>> =
         Arc::new(Mutex::new(HashMap::new()));
 
-    // Parse trigger name from title (if passed via show_with_trigger)
-    let trigger_name = if let Some(pos) = title.find('\x1f') {
-        let trigger = &title[pos + 1..];
-        Some(format!("  ▸ {}", trigger))
-    } else {
-        None
-    };
-
     let mut layout = LinearLayout::vertical();
-
-    // Header: cli-expander + trigger name
-    let header_text = match trigger_name {
-        Some(ref trig) => format!("cli-expander {}", trig),
-        None => String::from("cli-expander"),
-    };
-    layout.add_child(TextView::new(header_text.as_str()));
-    layout.add_child(TextView::new("─".repeat(48)));
-    layout.add_child(TextView::new("Tab next  │  / search  │  Ctrl+Enter submit  │  Cancel button"));
-    layout.add_child(TextView::new("")); // spacer
+    layout.add_child(TextView::new(
+        "Tab next | / search dropdown | Enter select | Esc cancel",
+    ));
+    layout.add_child(TextView::new(
+        "-----------------------------------------------",
+    ));
 
     let mut current_section: Option<String> = None;
 
