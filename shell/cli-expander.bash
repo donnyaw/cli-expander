@@ -62,8 +62,20 @@ command_not_found_handle() {
     return 127
 }
 
-# Ctrl+F → fzf fuzzy search all triggers → select → expand inline
+# fzf trigger search — type Ctrl+F or Alt+F, fuzzy find trigger, select, expand inline
 _cli_expander_fzf_search() {
+    # Ensure PATH is up to date
+    hash ce 2>/dev/null || PATH="$PATH:$HOME/.local/bin"
+
+    if ! command -v ce &>/dev/null; then
+        echo "cli-expander: 'ce' binary not found in PATH" >&2
+        return 1
+    fi
+    if ! command -v fzf &>/dev/null; then
+        echo "cli-expander: 'fzf' not found. Install it first." >&2
+        return 1
+    fi
+
     local selected
     selected=$(ce list --csv 2>/dev/null | fzf \
         --delimiter=',' \
@@ -85,6 +97,9 @@ _cli_expander_fzf_search() {
     fi
 }
 
-bind -x '" ": _cli_expander_on_space'
-bind -x '"\C-t": _cli_expander_expand'
-bind -x '"\C-f": _cli_expander_fzf_search'
+# Bind trigger keys (emacs mode)
+bind -m emacs -x '" ": _cli_expander_on_space'
+bind -m emacs -x '"\C-t": _cli_expander_expand'
+bind -m emacs -x '"\C-f": _cli_expander_fzf_search'
+# Alt+F as fallback
+bind -m emacs -x '"\ef": _cli_expander_fzf_search'
