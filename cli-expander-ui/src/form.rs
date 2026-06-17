@@ -307,10 +307,17 @@ fn render_cursive_form(title: &str, fields: &[FormField]) -> anyhow::Result<Opti
     let option_store: Arc<Mutex<HashMap<String, Vec<String>>>> =
         Arc::new(Mutex::new(HashMap::new()));
 
-    // Extract clean title (strip trigger name added by show_with_trigger)
+    // Extract clean title and trigger name
     let display_title = title.find('\x1f').map_or(title, |pos| &title[..pos]);
+    let header_trigger = title.find('\x1f').map(|pos| &title[pos + 1..]);
 
     let mut layout = LinearLayout::vertical();
+
+    // Show trigger name prominently (if provided via show_with_trigger)
+    if let Some(trigger) = header_trigger {
+        layout.add_child(TextView::new(format!("  ▶  {}", trigger)));
+    }
+
     layout.add_child(TextView::new(
         "Tab next  |  / search dropdown  |  Ctrl+Enter submit",
     ));
