@@ -31,7 +31,22 @@ pub struct FormResult {
 }
 
 pub trait FormRenderer: Send {
-    fn show(&self, title: &str, fields: &[FormField]) -> anyhow::Result<Option<FormResult>>;
+    fn show(
+        &self,
+        title: &str,
+        fields: &[FormField],
+    ) -> anyhow::Result<Option<FormResult>>;
+
+    /// Show form with a trigger name displayed in the header
+    fn show_with_trigger(
+        &self,
+        title: &str,
+        trigger: &str,
+        fields: &[FormField],
+    ) -> anyhow::Result<Option<FormResult>> {
+        let combined = format!("{}{}{}", title, "\x1f", trigger);
+        self.show(&combined, fields)
+    }
 }
 
 pub struct CursiveFormRenderer;
@@ -292,13 +307,23 @@ fn render_cursive_form(title: &str, fields: &[FormField]) -> anyhow::Result<Opti
     let option_store: Arc<Mutex<HashMap<String, Vec<String>>>> =
         Arc::new(Mutex::new(HashMap::new()));
 
+    // Parse trigger name from title (if passed via show_with_trigger)
+    let trigger_name = if let Some(pos) = title.find('\x1f') {
+        let trigger = &title[pos + 1..];
+        Some(format!("  ▸ {}", trigger))
+    } else {
+        None
+    };
+
     let mut layout = LinearLayout::vertical();
-    layout.add_child(TextView::new(
-        "Tab next | / search dropdown | Enter select | Esc cancel",
-    ));
-    layout.add_child(TextView::new(
-        "-----------------------------------------------",
-    ));
+
+    // Header: cli-expander + trigger name
+    let header_text = match trigger_name {
+        Some(ref trig) => format!("cli-expander {}", trig),
+        None => String::from("cli-expander"),
+    };
+    layout.add_child(TextView::new(header_text.as_str()));
+    layout.add_child(TextView::new("─".repeat(48)));
 
     let mut current_section: Option<String> = None;
 
