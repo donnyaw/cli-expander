@@ -1,0 +1,12 @@
+[package]
+name = "cli-expander-inject"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+anyhow = { workspace = true }
+thiserror = { workspace = true }
+log = { workspace = true }
+evdev = "0.13"
+arboard = "3"

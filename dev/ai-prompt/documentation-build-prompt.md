@@ -1,24 +1,24 @@
-# AI Prompt: Build Product Documentation for terminal-expander
+# AI Prompt: Build Product Documentation for cli-expander
 
 ## Role
 
-You are a technical documentation specialist. Create clear, user-facing and developer-facing documentation for `terminal-expander`, a terminal-native trigger expander and TUI command form builder written in Rust.
+You are a technical documentation specialist. Create clear, user-facing and developer-facing documentation for `cli-expander`, a terminal-native trigger expander and TUI command form builder written in Rust.
 
 ## Repository
 
 Work in:
 
 ```text
-/home/rezriz/github/cli-projects/terminal-expander
+/home/rezriz/github/cli-projects/cli-expander
 ```
 
 Primary branch/repo:
 
 ```text
-donnyaw/terminal-expander on main
+donnyaw/cli-expander on main
 ```
 
-Do not work in the wizard-form repo unless explicitly asked. The current focus is the Cursive TUI version in `terminal-expander`.
+Do not work in the wizard-form repo unless explicitly asked. The current focus is the Cursive TUI version in `cli-expander`.
 
 ## Product Positioning
 
@@ -31,7 +31,7 @@ Forms for shell commands, launched from the prompt.
 More specifically:
 
 ```text
-terminal-expander lets users type short triggers like :findname, press Space, fill a terminal TUI form, and insert the generated command directly into the current shell prompt for review/editing before execution.
+cli-expander lets users type short triggers like :findname, press Space, fill a terminal TUI form, and insert the generated command directly into the current shell prompt for review/editing before execution.
 ```
 
 Closest tools to compare against:
@@ -84,12 +84,12 @@ Document these as working or available features:
 5. Clipboard variables
 6. Shell command variables
 7. Template rendering with `{{variable}}`
-8. Direct CLI expansion with `te :trigger`
+8. Direct CLI expansion with `ce :trigger`
 9. Bash prompt expansion with `:trigger[Space]`
 10. TUI forms rendered with Cursive
 11. Clean stdout form output for command capture
 12. Cascading/dependent dropdowns
-13. Config loading from `~/.config/texpand/matches/*.yml`
+13. Config loading from `~/.config/cli-expander/matches/*.yml`
 14. Example command-builder packs for Linux `find`
 
 ## Current Form Field Types
@@ -288,7 +288,7 @@ The root `README.md` should clearly explain:
 8. A minimal form example
 9. A `find` command-builder example
 10. A list of supported field types
-11. How to list triggers with `te list`
+11. How to list triggers with `ce list`
 
 Keep README concise. Move deeper explanations into `docs/`.
 
@@ -298,8 +298,8 @@ Include a copy-pasteable quick start:
 
 ```bash
 cargo build --release
-cp target/release/te ~/.local/bin/te
-source shell/texpand.bash
+cp target/release/ce ~/.local/bin/ce
+source shell/cli-expander.bash
 ```
 
 Then show:
@@ -357,7 +357,7 @@ Review generated commands before pressing Enter, especially commands using -dele
 
 Document:
 
-- Config directory: `~/.config/texpand/matches/`
+- Config directory: `~/.config/cli-expander/matches/`
 - Match files use YAML
 - Top-level structure: `matches:`
 - Basic `trigger` and `replace`
@@ -372,13 +372,13 @@ Document:
 Briefly document the crate layout:
 
 ```text
-texpand-cli      CLI and field config mapping
-texpand-config   YAML parsing
-texpand-match    trigger matching
-texpand-render   template and variable rendering
-texpand-ui       Cursive TUI forms
-texpand-detect   Linux keyboard detection
-texpand-inject   text injection backends
+cli-expander-cli      CLI and field config mapping
+cli-expander-config   YAML parsing
+cli-expander-match    trigger matching
+cli-expander-render   template and variable rendering
+cli-expander-ui       Cursive TUI forms
+cli-expander-detect   Linux keyboard detection
+cli-expander-inject   text injection backends
 shell/           Bash/Zsh/Fish plugins
 ```
 
@@ -389,7 +389,7 @@ Mention that the current focus is Bash and the Cursive TUI version.
 After editing docs, run:
 
 ```bash
-te list
+ce list
 ```
 
 If code was changed, also run:

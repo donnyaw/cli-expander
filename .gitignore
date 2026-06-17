@@ -8,4 +8,5 @@ Cargo.lock
 *~
 .DS_Store
 *.log
+cli-expander-plan.csv
 dev/

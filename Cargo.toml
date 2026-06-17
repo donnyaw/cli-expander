@@ -1,13 +1,13 @@
 [workspace]
 resolver = "2"
 members = [
-    "texpand-config",
-    "texpand-detect",
-    "texpand-match",
-    "texpand-render",
-    "texpand-inject",
-    "texpand-ui",
-    "texpand-cli",
+    "cli-expander-config",
+    "cli-expander-detect",
+    "cli-expander-match",
+    "cli-expander-render",
+    "cli-expander-inject",
+    "cli-expander-ui",
+    "cli-expander-cli",
 ]
 
 [workspace.package]

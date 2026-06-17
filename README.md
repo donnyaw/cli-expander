@@ -1,32 +1,28 @@
-# terminal-expander
+# cli-expander
 
-A terminal-native text expander with Espanso-compatible form support. Written in Rust.
+A terminal-native text expander with multi-field form support. Written in Rust.
 
 ## Features
 
 - **Trigger-based expansion** — Type `:hello` and have it expand to `Hello World!`
 - **Prompt-first workflow** — Type `:find[Space]`, fill a TUI form, then edit or run the generated command from the shell prompt
 - **Multi-field forms** — Interactive forms with text, password, checkbox, multiline, choice dropdowns, list selectors, and cascade dropdowns — all rendered in the terminal via Cursive
-- **Espanso-compatible config** — Use your existing Espanso `match/*.yml` files
+- **YAML config** — Define matches in `~/.config/cli-expander/matches/*.yml` files
 - **Variable system** — Date, clipboard, shell command, and form variable injection
 - **Shell plugins** — Expansion hooks for zsh, bash, and fish
 - **System-wide detection** — evdev-based keyboard monitoring (Linux)
 - **Multiple injection methods** — uinput, ydotool, tmux send-keys, clipboard
 
-## Project Status
-
-Currently in early development. Core engine, config parser, match engine, template renderer, form renderer, shell plugins, and platform layer are implemented. See `tasks.csv` for detailed progress.
-
 ## Architecture
 
 ```
-texpand-cli/         ← Main binary (CLI)
-texpand-config/      ← YAML config parser (Espanso-compatible)
-texpand-match/       ← Trigger detection and matching engine
-texpand-render/      ← Template rendering and variable system
-texpand-ui/          ← Cursive-based TUI form renderer
-texpand-detect/      ← evdev keyboard event detection
-texpand-inject/      ← Text injection (uinput, tmux, clipboard)
+cli-expander-cli/         ← Main binary (CLI)
+cli-expander-config/      ← YAML config parser
+cli-expander-match/       ← Trigger detection and matching engine
+cli-expander-render/      ← Template rendering and variable system
+cli-expander-ui/          ← Cursive-based TUI form renderer
+cli-expander-detect/      ← evdev keyboard event detection
+cli-expander-inject/      ← Text injection (uinput, tmux, clipboard)
 ```
 
 ## Quick Start
@@ -39,15 +35,15 @@ cargo build
 cargo test
 
 # Create a match file
-mkdir -p ~/.config/texpand/matches
-cat > ~/.config/texpand/matches/base.yml << 'EOF'
+mkdir -p ~/.config/cli-expander/matches
+cat > ~/.config/cli-expander/matches/base.yml << 'EOF'
 matches:
   - trigger: ":hello"
     replace: "Hello World!"
 EOF
 
 # Run the expander (requires shell plugin or system-wide mode)
-texpand expand ":hello"
+cli-expander expand ":hello"
 ```
 
 ## Shell Integration
@@ -64,22 +60,22 @@ as a shell command, while Space expands it into the editable command line.
 
 ### Zsh
 ```bash
-source /path/to/shell/texpand.zsh
+source /path/to/shell/cli-expander.zsh
 ```
 
 ### Bash
 ```bash
-source /path/to/shell/texpand.bash
+source /path/to/shell/cli-expander.bash
 ```
 
 ### Fish
 ```fish
-source /path/to/shell/texpand.fish
+source /path/to/shell/cli-expander.fish
 ```
 
 ## Configuration
 
-terminal-expander uses Espanso-compatible YAML match files:
+cli-expander uses YAML match files:
 
 ```yaml
 matches:

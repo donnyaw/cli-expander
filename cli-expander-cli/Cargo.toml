@@ -1,0 +1,25 @@
+[package]
+name = "cli-expander-cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "cli-expander"
+path = "src/main.rs"
+
+[[bin]]
+name = "ce"
+path = "src/main.rs"
+
+[dependencies]
+clap = { version = "4", features = ["derive"] }
+anyhow = { workspace = true }
+serde_norway = { workspace = true }
+log = { workspace = true }
+cli-expander-config = { path = "../cli-expander-config" }
+cli-expander-match = { path = "../cli-expander-match" }
+cli-expander-render = { path = "../cli-expander-render" }
+cli-expander-detect = { path = "../cli-expander-detect" }
+cli-expander-inject = { path = "../cli-expander-inject" }
+cli-expander-ui = { path = "../cli-expander-ui" }

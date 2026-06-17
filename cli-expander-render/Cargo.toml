@@ -1,0 +1,17 @@
+[package]
+name = "cli-expander-render"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+serde = { workspace = true }
+serde_norway = { workspace = true }
+anyhow = { workspace = true }
+thiserror = { workspace = true }
+log = { workspace = true }
+regex = { workspace = true }
+cli-expander-config = { path = "../cli-expander-config" }
+cli-expander-match = { path = "../cli-expander-match" }
+chrono = "0.4"
+arboard = "3"

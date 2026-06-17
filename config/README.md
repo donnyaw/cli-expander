@@ -1,5 +1,5 @@
 # Example configuration directory structure
-# Copy this to ~/.config/texpand/
+# Copy this to ~/.config/cli-expander/
 
 # Match files directory
 matches/
