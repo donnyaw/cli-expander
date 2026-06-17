@@ -307,12 +307,10 @@ fn render_cursive_form(title: &str, fields: &[FormField]) -> anyhow::Result<Opti
     let option_store: Arc<Mutex<HashMap<String, Vec<String>>>> =
         Arc::new(Mutex::new(HashMap::new()));
 
-    // Show trigger name in header if passed via show_with_trigger
-    let header_trigger = title.find('\x1f').map(|pos| &title[pos + 1..]);
-    let display_title = header_trigger.unwrap_or(title);
+    // Extract clean title (strip trigger name added by show_with_trigger)
+    let display_title = title.find('\x1f').map_or(title, |pos| &title[..pos]);
 
     let mut layout = LinearLayout::vertical();
-    layout.add_child(TextView::new(format!("  ▸ {}", display_title)));
     layout.add_child(TextView::new(
         "Tab next  |  / search dropdown  |  Ctrl+Enter submit",
     ));
@@ -489,7 +487,7 @@ fn render_cursive_form(title: &str, fields: &[FormField]) -> anyhow::Result<Opti
     layout.add_child(buttons);
 
     let dialog = Dialog::around(ScrollView::new(layout))
-        .title(title)
+        .title(display_title)
         .h_align(HAlign::Center);
 
     siv.add_layer(dialog);
