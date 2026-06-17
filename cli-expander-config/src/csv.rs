@@ -41,27 +41,63 @@ impl TriggerRecord {
                     };
 
                     let description = m.search_label.as_deref()
+                        .map(|s| sanitize_description(s))
                         .or_else(|| {
-                            m.replace.as_deref()
-                                .or_else(|| m.form.as_deref())
-                        })
-                        .map(|s| {
-                            let s = s.trim();
-                            if s.len() > 80 {
-                                format!("{}...", &s[..77])
+                            if m.has_form() {
+                                let field_count = m.form_fields.as_ref().map(|f| f.len()).unwrap_or(0);
+                                if field_count > 0 {
+                                    Some(format!("Interactive form with {} fields", field_count))
+                                } else if let Some(ref form_text) = m.form {
+                                    let fields: Vec<&str> = form_text.split("[[").skip(1).filter_map(|s| s.split("]]").next()).collect();
+                                    if !fields.is_empty() {
+                                        Some(format!("Form: {}", fields.join(", ")))
+                                    } else {
+                                        None
+                                    }
+                                } else {
+                                    None
+                                }
+                            } else if let Some(ref vars) = m.vars {
+                                if vars.iter().any(|v| v.var_type == "form") {
+                                    let field_count = vars.iter()
+                                        .filter_map(|v| v.params.as_ref())
+                                        .filter_map(|p| p.get("fields"))
+                                        .filter_map(|f| f.as_mapping())
+                                        .map(|m| m.len())
+                                        .sum::<usize>();
+                                    if field_count > 0 {
+                                        Some(format!("Interactive form with {} fields", field_count))
+                                    } else {
+                                        Some("Interactive form".to_string())
+                                    }
+                                } else {
+                                    m.replace.as_deref().map(sanitize_description)
+                                }
                             } else {
-                                s.to_string()
+                                m.replace.as_deref().map(sanitize_description)
                             }
                         })
                         .unwrap_or_default();
 
                     let tags = extract_tags(trigger, &description);
 
+                    let trigger_type = if m.has_form() {
+                        "form".to_string()
+                    } else if let Some(ref vars) = m.vars {
+                        if vars.iter().any(|v| v.var_type == "form") {
+                            "form".to_string()
+                        } else {
+                            "text".to_string()
+                        }
+                    } else {
+                        "text".to_string()
+                    };
+
                     records.push(TriggerRecord {
                         trigger: display_trigger,
                         description,
                         category: source.clone(),
-                        trigger_type: if m.has_form() { "form".to_string() } else { "text".to_string() },
+                        trigger_type,
                         tags,
                         source_file: source.clone(),
                     });
@@ -155,6 +191,59 @@ pub fn merge_records(
     let mut result: Vec<TriggerRecord> = merged.into_values().collect();
     result.sort_by(|a, b| a.trigger.cmp(&b.trigger));
     result
+}
+
+/// Clean up raw template/replace text into a human-readable description.
+/// Strips {{...}} template vars, [[...]] form fields, and truncates to 80 chars.
+fn sanitize_description(s: &str) -> String {
+    let mut result = String::with_capacity(s.len());
+
+    // Process character by character, stripping template/field markers
+    let mut in_template = false;
+    let mut in_field = false;
+    for ch in s.chars() {
+        if ch == '{' && !in_template {
+            in_template = true;
+            continue;
+        }
+        if ch == '}' && in_template {
+            in_template = false;
+            continue;
+        }
+        if ch == '[' && !in_field {
+            in_field = true;
+            continue;
+        }
+        if ch == ']' && in_field {
+            in_field = false;
+            continue;
+        }
+        if in_template || in_field {
+            continue;
+        }
+        result.push(ch);
+    }
+
+    // Collapse multiple spaces
+    let mut collapsed = String::with_capacity(result.len());
+    let mut prev_space = false;
+    for ch in result.trim().chars() {
+        if ch.is_whitespace() {
+            if !prev_space {
+                collapsed.push(' ');
+                prev_space = true;
+            }
+        } else {
+            collapsed.push(ch);
+            prev_space = false;
+        }
+    }
+
+    if collapsed.len() > 80 {
+        format!("{}...", &collapsed[..77])
+    } else {
+        collapsed
+    }
 }
 
 fn extract_tags(trigger: &str, description: &str) -> String {
