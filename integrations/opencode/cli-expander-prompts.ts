@@ -2,6 +2,7 @@ import type {
   TuiDialogSelectOption,
   TuiDialogStack,
   TuiPlugin,
+  TuiPluginModule,
 } from "@opencode-ai/plugin/tui"
 import { execFile } from "node:child_process"
 import { promisify } from "node:util"
@@ -25,7 +26,7 @@ type PluginOptions = {
 const DEFAULT_CATEGORY = "ai-prompts"
 const DEFAULT_SOURCE_PART = "/ai-prompts/"
 
-export const tui: TuiPlugin = async (api, options) => {
+const promptPickerPlugin: TuiPlugin = async (api, options) => {
   const pluginOptions = (options ?? {}) as PluginOptions
   const cePath = pluginOptions.cePath || process.env.CLI_EXPANDER_BIN || "ce"
   const category = pluginOptions.category || DEFAULT_CATEGORY
@@ -136,3 +137,7 @@ export const tui: TuiPlugin = async (api, options) => {
     })
   }
 }
+
+export default {
+  tui: promptPickerPlugin,
+} satisfies TuiPluginModule
