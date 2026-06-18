@@ -181,14 +181,6 @@ cli-expander/           ← Rust workspace (7 crates)
 
 ---
 
-## Developer Notes
-
-- **`dev/` folder** — Contains AI-generated build plans and session records. Ignored by git (`.gitignore`) and syncthing (`.stignore`) to keep the main repository clean.
-- **Config packs** — Extended match packs live in `/home/rezriz/github/common-config/cli-expander/`. Symlink to `~/.config/cli-expander/matches/` to use them.
-- **Crates** — The workspace has 7 crates: `cli-expander-cli`, `cli-expander-config`, `cli-expander-match`, `cli-expander-render`, `cli-expander-ui`, `cli-expander-detect`, `cli-expander-inject`.
-
----
-
 ## Testing
 
 ```bash
