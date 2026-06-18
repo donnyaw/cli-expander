@@ -10,7 +10,7 @@ use std::path::PathBuf;
 #[command(
     name = "cli-expander",
     version,
-    about = "Terminal-native text expander with multi-field form support",
+    about = "Interactive command builder for terminal users",
     args_conflicts_with_subcommands = true
 )]
 struct Cli {
