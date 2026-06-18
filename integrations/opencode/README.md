@@ -1,19 +1,16 @@
-# OpenCode Prompt Picker
+# OpenCode Prompt Commands
 
-This integration uses cli-expander as an AI prompt registry and adds an
-OpenCode-native prompt picker.
+This integration uses cli-expander as an AI prompt registry for OpenCode.
 
 ## What It Does
 
-- Loads prompt records from `ce list --json`.
-- Filters records in the `ai-prompts` category or source path.
-- Opens an OpenCode fuzzy picker with `Ctrl+F`.
-- Expands the selected trigger with `ce expand <trigger>`.
-- Inserts the expanded prompt into the OpenCode input box without submitting it.
+- Adds OpenCode slash commands: `/prompt`, `/prompts`, and `/ce-prompt`.
+- Expands a selected trigger with `ce expand <trigger>`.
+- Lists available triggers with `ce list` when no trigger is provided.
 
-The plugin does not run raw `fzf` or cli-expander's Cursive forms inside
-OpenCode. It uses OpenCode's native TUI dialogs so the interaction stays inside
-OpenCode.
+OpenCode `1.17.8` loads files in `~/.config/opencode/plugins/` with the server
+plugin loader. That loader rejects TUI-only prompt picker modules, so the
+supported integration path is OpenCode command files.
 
 ## Install Sample Prompts
 
@@ -25,27 +22,25 @@ ce list --json
 
 The parent folder name becomes the prompt category: `ai-prompts`.
 
-## Install The OpenCode Plugin
+## Install The OpenCode Commands
 
-Copy or symlink the plugin into OpenCode's global plugin directory:
+Copy the command files into OpenCode's global command directory:
 
 ```bash
-mkdir -p ~/.config/opencode/plugins
-cp integrations/opencode/cli-expander-prompts.ts ~/.config/opencode/plugins/
+mkdir -p ~/.config/opencode/commands
+cp integrations/opencode/commands/*.md ~/.config/opencode/commands/
 ```
 
-Restart OpenCode after installing or changing plugins. OpenCode loads plugin
+Restart OpenCode after installing or changing commands. OpenCode loads command
 files at startup.
 
 ## Usage
 
 Inside OpenCode:
 
-- Press `Ctrl+F` to open the cli-expander prompt picker.
-- Or run `/prompt`, `/prompts`, or `/ce-prompt` if slash command registration is available.
-- Search by trigger or description.
-- Select a prompt.
-- Edit the inserted prompt if needed, then submit normally.
+- Run `/prompts` to list available triggers.
+- Run `/prompt :ai-review` to expand and submit the `:ai-review` prompt.
+- Run `/ce-prompt :ai-plan` as an equivalent explicit cli-expander command.
 
 ## Prompt Format
 
@@ -68,34 +63,18 @@ Recommended conventions:
 - Store prompt packs under `matches/ai-prompts/`.
 - Keep shell command builders outside `ai-prompts/` so the OpenCode picker only shows prompts.
 
-## Configuration
+## Experimental TUI Picker
 
-The plugin supports optional OpenCode plugin options when loaded from
-`opencode.json`:
-
-```json
-{
-  "plugin": [
-    [
-      "./integrations/opencode/cli-expander-prompts.ts",
-      {
-        "cePath": "/home/rezriz/.local/bin/ce",
-        "category": "ai-prompts",
-        "sourcePathPart": "/ai-prompts/"
-      }
-    ]
-  ]
-}
-```
-
-When installed from `~/.config/opencode/plugins/`, the defaults are usually
-enough. You can also set `CLI_EXPANDER_BIN` to override the `ce` binary path.
+`cli-expander-prompts.ts` is an experimental OpenCode TUI plugin that uses native
+dialogs and appends the expanded prompt without auto-submitting. Do not copy it
+into `~/.config/opencode/plugins/` on OpenCode `1.17.8`; that path is for server
+plugins and will reject TUI-only modules.
 
 ## Current Limitations
 
 - The MVP handles text prompts only.
 - Existing cli-expander Cursive forms are intentionally not embedded in OpenCode.
 - Prompt variables such as `{{task}}` are not prompted for yet; they remain in
-  the inserted text for manual editing.
-- `Ctrl+F` may conflict with an OpenCode or terminal shortcut. If that happens,
-  change the plugin keybind or use the slash command.
+  the command output for manual editing in cli-expander.
+- `Ctrl+F` is already used by OpenCode for input movement and other TUI actions.
+  A fuzzy prompt picker needs a supported OpenCode TUI plugin installation path.

@@ -74,16 +74,14 @@ Bash supports `Ctrl+F` and `Alt+F` trigger discovery through `fzf`. The search u
 
 Zsh and Fish currently support expansion keybindings, but their checked-in plugins do not yet implement `Ctrl+F` fzf search.
 
-### OpenCode Prompt Picker
+### OpenCode Prompt Commands
 
 cli-expander can also act as an AI prompt registry for OpenCode. Store prompt
 matches under `~/.config/cli-expander/matches/ai-prompts/`, then install the
-OpenCode TUI plugin from `integrations/opencode/` to get a `Ctrl+F` fuzzy prompt
-picker inside OpenCode.
+OpenCode command files from `integrations/opencode/commands/`.
 
-The OpenCode picker uses native OpenCode dialogs rather than raw `fzf`, expands
-the selected prompt with `ce expand`, and inserts it into the OpenCode input box
-without auto-submitting.
+Use `/prompts` to list triggers or `/prompt :ai-review` to expand a prompt from
+the registry inside OpenCode.
 
 See `integrations/opencode/README.md` and `examples/ai-prompts/`.
 
