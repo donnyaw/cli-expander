@@ -317,7 +317,7 @@ fn render_cursive_form(title: &str, fields: &[FormField]) -> anyhow::Result<Opti
 
     let mut layout = LinearLayout::vertical();
     layout.add_child(TextView::new(
-        "Tab next  |  / search dropdown  |  Ctrl+Enter submit",
+        "Tab next | / search | Ctrl+Enter submit | Ctrl+W delete word | Ctrl+X clear",
     ));
     layout.add_child(TextView::new(
         "-----------------------------------------------",
@@ -465,10 +465,37 @@ fn render_cursive_form(title: &str, fields: &[FormField]) -> anyhow::Result<Opti
                 edit
             };
 
+            // Wrap EditView with Ctrl+W (delete word backward) and Ctrl+X (clear field)
+            use cursive::event::Event;
+            let wrapped = OnEventView::new(edit)
+                .on_pre_event_inner(Event::CtrlChar('w'), |v, _| {
+                    // Delete word backward
+                    let content = (*v.get_content()).clone();
+                    let cursor = v.get_cursor();
+                    if cursor > 0 && !content.is_empty() {
+                        let bytes = content.as_bytes();
+                        let mut end = cursor.min(content.len());
+                        while end > 0 && bytes[end - 1] == b' ' {
+                            end -= 1;
+                        }
+                        while end > 0 && !bytes[end - 1].is_ascii_whitespace() {
+                            end -= 1;
+                        }
+                        let new = format!("{}{}", &content[..end], &content[cursor..]);
+                        let _ = v.set_content(new);
+                    }
+                    Some(cursive::event::EventResult::Consumed(None))
+                })
+                .on_pre_event_inner(Event::CtrlChar('x'), |v, _| {
+                    // Clear entire field
+                    let _ = v.set_content("");
+                    Some(cursive::event::EventResult::Consumed(None))
+                });
+
             add_field_block(
                 &mut layout,
                 display_label(&label, false),
-                edit.with_name(name.clone()).min_width(50),
+                wrapped.with_name(name.clone()).min_width(50),
             );
         }
     }
