@@ -420,12 +420,31 @@ fn render_cursive_form(title: &str, fields: &[FormField]) -> anyhow::Result<Opti
                 textarea.with_name(name.clone()).min_width(50).min_height(5),
             );
         } else {
-            let edit = EditView::new().content(
+            let mut edit = EditView::new().content(
                 field
                     .default
                     .as_deref()
                     .unwrap_or(""),
             );
+            // Show placeholder as ghost text: user types over it without clearing
+            if field.default.is_none() {
+                if let Some(ref ph) = field.placeholder {
+                    let ph_content = ph.clone();
+                    let ph_match = ph.clone();
+                    let fname = name.clone();
+                    edit = edit.on_edit(move |s, content, _cursor| {
+                        // If user typed on top of placeholder, extract just the typed part
+                        if content.len() > ph_match.len() && content.starts_with(&ph_match) {
+                            let typed = content[ph_match.len()..].to_string();
+                            let _ = s.call_on_name(&fname, |v: &mut EditView| {
+                                v.set_content(&typed);
+                            });
+                        }
+                    });
+                    // Pre-fill with placeholder
+                    edit = edit.content(&ph_content);
+                }
+            }
             let edit = if field.field_type == FieldType::Password {
                 edit.secret()
             } else {
