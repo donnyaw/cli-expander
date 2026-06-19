@@ -424,7 +424,6 @@ fn render_cursive_form(title: &str, fields: &[FormField]) -> anyhow::Result<Opti
                 field
                     .default
                     .as_deref()
-                    .or(field.placeholder.as_deref())
                     .unwrap_or(""),
             );
             let edit = if field.field_type == FieldType::Password {
