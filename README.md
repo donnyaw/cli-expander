@@ -45,6 +45,16 @@ Supported field types:
 | Password | Masked text input |
 | Cascade | Dependent dropdown where child options change with the parent |
 
+Ghost text placeholder: fields with only `placeholder` (no `default`) show grey ghost text that disappears when you type — no need to delete it first.
+
+```yaml
+fields:
+  source:
+    placeholder: e.g. ./file.txt, /var/log/app.log
+  exec:
+    placeholder: e.g. rm, chmod, ls -lh
+```
+
 Example form layout:
 
 ```text
