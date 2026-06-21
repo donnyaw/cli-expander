@@ -273,6 +273,8 @@ More examples are available in `examples/base.yml` and `examples/forms-advanced.
 
 The default match directory is `~/.config/cli-expander/matches`. Output modes are currently available on the explicit `expand` subcommand; bare shorthand keeps stdout behavior. Use `--target-pane` with tmux pane ids such as `%1` or `$TMUX_PANE` when a popup or script needs to inject into a specific pane. Tmux injection is currently single-line only; multiline output is rejected until paste-buffer support is added.
 
+Tmux setup notes and binding examples live in `integrations/tmux/`.
+
 ---
 
 ## Configuration

@@ -4,6 +4,10 @@
 
 Create a dedicated tmux integration location with install instructions, recommended bindings, and selected-pane workflow documentation.
 
+## Implementation Status
+
+Completed on branch `feature/tmux-integration` with tag `p14-05`.
+
 ## Why This Exists
 
 Tmux integration has different usage patterns from shell plugins. Users need one clear place for tmux-specific files and guidance.
