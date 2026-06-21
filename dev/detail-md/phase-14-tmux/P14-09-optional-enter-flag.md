@@ -4,6 +4,10 @@
 
 Add an explicit flag that sends Enter after tmux insertion for trusted workflows.
 
+## Implementation Status
+
+Completed on branch `feature/tmux-integration` with tag `p14-09`.
+
 ## Why This Exists
 
 The safe default is insert-only. Some users may want a selected trigger to run immediately. That behavior must be explicit because many expanded commands should be inspected before execution.

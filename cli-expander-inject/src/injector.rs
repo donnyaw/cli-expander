@@ -53,6 +53,7 @@ pub struct TmuxInjector;
 #[derive(Debug, Clone, Default)]
 pub struct TmuxInjectOptions {
     pub target_pane: Option<String>,
+    pub enter: bool,
 }
 
 impl TmuxInjector {
@@ -63,17 +64,12 @@ impl TmuxInjector {
     ) -> anyhow::Result<()> {
         let text = normalize_tmux_text(text)?;
         let args = tmux_send_keys_args(&text, options.target_pane.as_deref())?;
-        let output = std::process::Command::new("tmux")
-            .args(args)
-            .output()
-            .map_err(|e| anyhow::anyhow!("tmux send-keys failed: {}", e))?;
-        if !output.status.success() {
-            let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
-            if stderr.is_empty() {
-                anyhow::bail!("tmux send-keys exited with error");
-            }
-            anyhow::bail!("tmux send-keys exited with error: {}", stderr);
+        run_tmux_args(args)?;
+
+        if options.enter {
+            run_tmux_args(tmux_enter_args(options.target_pane.as_deref())?)?;
         }
+
         Ok(())
     }
 }
@@ -126,6 +122,34 @@ pub fn tmux_send_keys_args(text: &str, target_pane: Option<&str>) -> anyhow::Res
     Ok(args)
 }
 
+pub fn tmux_enter_args(target_pane: Option<&str>) -> anyhow::Result<Vec<String>> {
+    let mut args = vec!["send-keys".to_string()];
+    if let Some(target) = target_pane {
+        if target.is_empty() {
+            anyhow::bail!("tmux target pane cannot be empty");
+        }
+        args.push("-t".to_string());
+        args.push(target.to_string());
+    }
+    args.push("Enter".to_string());
+    Ok(args)
+}
+
+fn run_tmux_args(args: Vec<String>) -> anyhow::Result<()> {
+    let output = std::process::Command::new("tmux")
+        .args(args)
+        .output()
+        .map_err(|e| anyhow::anyhow!("tmux send-keys failed: {}", e))?;
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
+        if stderr.is_empty() {
+            anyhow::bail!("tmux send-keys exited with error");
+        }
+        anyhow::bail!("tmux send-keys exited with error: {}", stderr);
+    }
+    Ok(())
+}
+
 pub fn normalize_tmux_text(text: &str) -> anyhow::Result<String> {
     if text.contains('\n') || text.contains('\r') {
         anyhow::bail!(
@@ -171,6 +195,18 @@ mod tests {
     fn test_tmux_send_keys_args_rejects_empty_target() {
         let err = tmux_send_keys_args("hello", Some("")).unwrap_err();
         assert!(err.to_string().contains("target pane cannot be empty"));
+    }
+
+    #[test]
+    fn test_tmux_enter_args_without_target() {
+        let args = tmux_enter_args(None).unwrap();
+        assert_eq!(args, vec!["send-keys", "Enter"]);
+    }
+
+    #[test]
+    fn test_tmux_enter_args_with_target() {
+        let args = tmux_enter_args(Some("%1")).unwrap();
+        assert_eq!(args, vec!["send-keys", "-t", "%1", "Enter"]);
     }
 
     #[test]

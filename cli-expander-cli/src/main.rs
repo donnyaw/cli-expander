@@ -58,6 +58,10 @@ enum Commands {
         /// Tmux target pane for tmux output mode
         #[arg(long)]
         target_pane: Option<String>,
+
+        /// Press Enter after tmux insertion
+        #[arg(long)]
+        enter: bool,
     },
 
     /// List all available triggers
@@ -141,6 +145,7 @@ fn main() -> anyhow::Result<()> {
             config_dir,
             output: OutputMode::Stdout,
             target_pane: None,
+            enter: false,
         })
     } else {
         cli.command
@@ -156,13 +161,14 @@ fn main() -> anyhow::Result<()> {
             config_dir,
             output,
             target_pane,
+            enter,
         } => {
             let input = input.unwrap_or_else(|| {
                 eprintln!("error: no input provided for expansion");
                 std::process::exit(1);
             });
             match expand_input(&input, &config_dir) {
-                Ok(expanded) => emit_output(&expanded, output, target_pane.as_deref())?,
+                Ok(expanded) => emit_output(&expanded, output, target_pane.as_deref(), enter)?,
                 Err(e) => {
                     eprintln!("{}", e);
                     std::process::exit(1);
@@ -431,9 +437,17 @@ fn expand_input(input: &str, config_dir: &str) -> anyhow::Result<String> {
     ))
 }
 
-fn emit_output(text: &str, mode: OutputMode, target_pane: Option<&str>) -> anyhow::Result<()> {
+fn emit_output(
+    text: &str,
+    mode: OutputMode,
+    target_pane: Option<&str>,
+    enter: bool,
+) -> anyhow::Result<()> {
     match mode {
         OutputMode::Stdout => {
+            if enter {
+                anyhow::bail!("--enter is only supported with tmux output");
+            }
             println!("{}", text);
             Ok(())
         }
@@ -441,6 +455,7 @@ fn emit_output(text: &str, mode: OutputMode, target_pane: Option<&str>) -> anyho
             text,
             &TmuxInjectOptions {
                 target_pane: target_pane.map(String::from),
+                enter,
             },
         ),
         OutputMode::Auto => {
@@ -449,14 +464,23 @@ fn emit_output(text: &str, mode: OutputMode, target_pane: Option<&str>) -> anyho
                     text,
                     &TmuxInjectOptions {
                         target_pane: target_pane.map(String::from),
+                        enter,
                     },
                 )
             } else {
+                if enter {
+                    anyhow::bail!("--enter is only supported with tmux output");
+                }
                 println!("{}", text);
                 Ok(())
             }
         }
-        OutputMode::Clipboard => ClipboardInjector.inject(text),
+        OutputMode::Clipboard => {
+            if enter {
+                anyhow::bail!("--enter is only supported with tmux output");
+            }
+            ClipboardInjector.inject(text)
+        }
     }
 }
 

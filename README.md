@@ -257,6 +257,7 @@ More examples are available in `examples/base.yml` and `examples/forms-advanced.
 | `ce expand <input> --output stdout` | Print expansion to stdout; this is the default shell plugin workflow |
 | `ce expand <input> --output tmux` | Inject expansion into the current tmux pane |
 | `ce expand <input> --output tmux --target-pane %1` | Inject expansion into a specific tmux pane |
+| `ce expand <input> --output tmux --enter` | Inject expansion and then send Enter explicitly |
 | `ce expand <input> --output auto` | Use tmux inside tmux; otherwise print to stdout |
 | `ce expand <input> --output clipboard` | Copy expansion to the system clipboard |
 | `ce list` | List available triggers |
@@ -271,7 +272,7 @@ More examples are available in `examples/base.yml` and `examples/forms-advanced.
 | `ce form <layout>` | Open a simple interactive form for a layout string |
 | `ce config` | Show configuration paths and shell plugin names |
 
-The default match directory is `~/.config/cli-expander/matches`. Output modes are currently available on the explicit `expand` subcommand; bare shorthand keeps stdout behavior. Use `--target-pane` with tmux pane ids such as `%1` or `$TMUX_PANE` when a popup or script needs to inject into a specific pane. Tmux injection is currently single-line only; multiline output is rejected until paste-buffer support is added.
+The default match directory is `~/.config/cli-expander/matches`. Output modes are currently available on the explicit `expand` subcommand; bare shorthand keeps stdout behavior. Use `--target-pane` with tmux pane ids such as `%1` or `$TMUX_PANE` when a popup or script needs to inject into a specific pane. Tmux injection is currently single-line only; multiline output is rejected until paste-buffer support is added. Tmux output inserts text only unless `--enter` is explicitly set.
 
 Tmux setup notes and binding examples live in `integrations/tmux/`.
 
