@@ -4,6 +4,10 @@
 
 Add automated coverage for output routing and tmux command construction without requiring a live tmux server in CI.
 
+## Implementation Status
+
+Completed on branch `feature/tmux-integration` with tag `p14-11`.
+
 ## Why This Exists
 
 Tmux behavior has several safety-sensitive paths: target pane routing, explicit Enter, and literal insertion. These should be tested at the construction/routing level even when tmux is not running.

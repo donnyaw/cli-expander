@@ -347,7 +347,7 @@ cargo test
 cargo clippy -- -D warnings
 ```
 
-Current test status: `67` tests pass across the workspace.
+Current test status: `86` tests pass across the workspace.
 
 Planning and agent notes live under `dev/`. Those files are historical/project-planning material and may describe planned work that is not part of the current user-facing behavior.
 

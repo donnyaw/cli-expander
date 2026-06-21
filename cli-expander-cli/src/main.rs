@@ -800,7 +800,90 @@ fn normalize_command_output(output: &str) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::{build_fields_from_form_var, build_form_fields, normalize_command_output};
+    use super::*;
+    use std::collections::HashMap;
+    use std::path::PathBuf;
+
+    fn create_temp_match_dir(yaml_content: &str) -> PathBuf {
+        let dir = std::env::temp_dir()
+            .join(format!("cli-expander-test-{}-{}", std::process::id(), std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos()));
+        std::fs::create_dir_all(&dir).ok();
+        std::fs::write(dir.join("test.yml"), yaml_content).ok();
+        dir
+    }
+
+    #[test]
+    fn test_expand_input_text_trigger() {
+        let dir = create_temp_match_dir(
+            r#"
+matches:
+  - trigger: ":hello"
+    replace: "Hello World!"
+"#,
+        );
+        let result = expand_input(":hello", dir.to_str().unwrap());
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), "Hello World!");
+        std::fs::remove_dir_all(dir).ok();
+    }
+
+    #[test]
+    fn test_expand_input_no_match() {
+        let dir = create_temp_match_dir(
+            r#"
+matches:
+  - trigger: ":hello"
+    replace: "world"
+"#,
+        );
+        let result = expand_input(":nope", dir.to_str().unwrap());
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("No match found"));
+        std::fs::remove_dir_all(dir).ok();
+    }
+
+    #[test]
+    fn test_expand_input_with_variable_resolution() {
+        let dir = create_temp_match_dir(
+            r#"
+matches:
+  - trigger: ":date"
+    replace: "{{now}}"
+    vars:
+      - name: now
+        type: date
+        params:
+          format: "%Y-%m-%d"
+"#,
+        );
+        let result = expand_input(":date", dir.to_str().unwrap());
+        assert!(result.is_ok());
+        let output = result.unwrap();
+        assert_eq!(output.len(), 10); // YYYY-MM-DD
+        assert_eq!(output.chars().filter(|&c| c == '-').count(), 2);
+        std::fs::remove_dir_all(dir).ok();
+    }
+
+    #[test]
+    fn test_emit_output_stdout_rejects_enter() {
+        let result = emit_output("hello", OutputMode::Stdout, None, true);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("--enter"));
+    }
+
+    #[test]
+    fn test_emit_output_stdout_accepts_no_enter() {
+        // Should not error, but we can't capture stdout easily
+        let result = emit_output("hello", OutputMode::Stdout, None, false);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_emit_output_clipboard_rejects_enter() {
+        let result = emit_output("hello", OutputMode::Clipboard, None, true);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("--enter"));
+    }
 
     #[test]
     fn test_build_form_fields_keeps_text_inputs_in_mixed_forms() {
