@@ -75,6 +75,16 @@ This means the target application must already be ready to receive typed text. F
 
 App-specific behavior is intentionally deferred until the generic selected-pane workflow is stable.
 
+## Form Triggers In Popup
+
+The picker calls the same command for both text and form triggers:
+
+```bash
+ce expand "$trigger" --output tmux --target-pane "$target_pane"
+```
+
+If the selected trigger opens a form, the form runs in the popup process. After the form is submitted, only the completed expansion is injected into the original target pane. Canceling the form exits without injection.
+
 ## Safety Rules
 
 - Tmux output inserts text only. It does not press Enter.
@@ -90,6 +100,7 @@ App-specific behavior is intentionally deferred until the generic selected-pane 
 | Text goes to the wrong pane | Pass the original pane id with `--target-pane` |
 | Picker says target pane is invalid | Reopen the picker from a live pane and pass `#{pane_id}` |
 | Text appears in the wrong app area | Focus the intended input area before opening the picker |
+| Form opens in the popup | Expected behavior; submit it to inject the completed result into the target pane |
 | Multiline expansion fails | Use a single-line trigger until paste-buffer support lands |
 | Picker cannot find `ce-tmux-picker.sh` | Put `integrations/tmux/` on `PATH` or copy the script to `~/.local/bin` |
 | Picker cannot find `fzf` | Install `fzf` |

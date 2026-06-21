@@ -4,6 +4,10 @@
 
 Make interactive form triggers usable from tmux without corrupting the target pane or losing the final command.
 
+## Implementation Status
+
+Completed on branch `feature/tmux-integration` with tag `p14-10`.
+
 ## Why This Exists
 
 The current form renderer uses Cursive. Full-screen terminal UIs can be fragile inside tmux, especially when invoked through shell capture or from the wrong pane. The safest tmux design is to run forms inside the popup and inject only the final result into the original pane.
