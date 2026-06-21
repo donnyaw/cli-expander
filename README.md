@@ -326,6 +326,10 @@ cli-expander/            Rust workspace
 └── shell/               Bash, Zsh, and Fish plugins
 ```
 
+The expansion pipeline is factored so the CLI can compute an expansion separately
+from how it is delivered. Today the default delivery path remains stdout for shell
+plugins; this also prepares the codebase for tmux output modes.
+
 ---
 
 ## Development

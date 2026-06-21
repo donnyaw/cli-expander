@@ -1,7 +1,7 @@
 use clap::{Parser, Subcommand};
 use cli_expander_config::TriggerRecord;
+use cli_expander_config::{merge_records, read_csv_file, write_csv_file};
 use cli_expander_config::{records_to_csv, records_to_json};
-use cli_expander_config::{read_csv_file, write_csv_file, merge_records};
 use cli_expander_ui::FormRenderer;
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -137,102 +137,10 @@ fn main() -> anyhow::Result<()> {
                 eprintln!("error: no input provided for expansion");
                 std::process::exit(1);
             });
-            let dir = expand_path(&config_dir);
-            let configs = cli_expander_config::Config::load_dir(&dir)?;
-            let matcher = cli_expander_match::Matcher::from_files(configs);
-
-            // Try exact end-of-buffer match first, then fall back to anywhere
-            let matched = matcher
-                .find_best(&input)
-                .or_else(|| matcher.find_in(&input));
-            match matched {
-                Some(m) => {
-                    if let Some(ref form_layout) = m.form {
-                        // This match has a form — render it via Cursive UI
-                        let fields = build_form_fields(m.form_fields.as_ref());
-
-                        let renderer = cli_expander_ui::CursiveFormRenderer;
-                        let form_result = renderer.show_with_trigger("cli-expander", &input, &fields);
-                        match form_result {
-                            Ok(Some(result)) => {
-                                let output = cli_expander_render::FormExtension::render_form(
-                                    form_layout,
-                                    &m.form_fields.as_ref().cloned().unwrap_or_default(),
-                                    &result.values,
-                                );
-                                println!("{}", normalize_command_output(&output));
-                            }
-                            Ok(None) => {
-                                eprintln!("[debug] Form cancelled by user");
-                                std::process::exit(1);
-                            }
-                            Err(e) => {
-                                let result = default_form_result(&fields);
-                                let output = cli_expander_render::FormExtension::render_form(
-                                    form_layout,
-                                    &m.form_fields.as_ref().cloned().unwrap_or_default(),
-                                    &result.values,
-                                );
-                                eprintln!(
-                                    "warning: form unavailable ({}); using default form values",
-                                    e
-                                );
-                                println!("{}", normalize_command_output(&output));
-                            }
-                        }
-                    } else if let Some(ref replace) = m.replace {
-                        // Static replacement — resolve variables
-                        let engine = cli_expander_render::VariableEngine::default();
-                        let mut vars = HashMap::new();
-
-                        if let Some(ref var_defs) = m.vars {
-                            // Check for form variables first
-                            for var in var_defs {
-                                if var.var_type == "form" {
-                                    let fields = build_fields_from_form_var(var);
-
-                                    if !fields.is_empty() {
-                                        let renderer = cli_expander_ui::CursiveFormRenderer;
-                                        let result = match renderer.show_with_trigger("cli-expander", &input, &fields) {
-                                            Ok(Some(result)) => result,
-                                            Ok(None) => std::process::exit(1),
-                                            Err(e) => {
-                                                eprintln!(
-                                                    "warning: form unavailable ({}); using default form values",
-                                                    e
-                                                );
-                                                default_form_result(&fields)
-                                            }
-                                        };
-
-                                        for (key, val) in &result.values {
-                                            // Inject both with prefix (form.path) and without (path)
-                                            vars.insert(
-                                                format!("{}.{}", var.name, key),
-                                                val.clone(),
-                                            );
-                                            vars.insert(key.clone(), val.clone());
-                                        }
-                                    }
-                                    break;
-                                }
-                            }
-
-                            // Resolve remaining variables (date, clipboard, shell)
-                            if let Ok(resolved) = engine.resolve_all(var_defs) {
-                                for (key, val) in resolved {
-                                    vars.entry(key).or_insert(val);
-                                }
-                            }
-                        }
-
-                        let template = cli_expander_render::Template::new(replace);
-                        let output = template.render(&vars);
-                        println!("{}", normalize_command_output(&output));
-                    }
-                }
-                None => {
-                    eprintln!("No match found for trigger in: {}", input);
+            match expand_input(&input, &config_dir) {
+                Ok(output) => println!("{}", output),
+                Err(e) => {
+                    eprintln!("{}", e);
                     std::process::exit(1);
                 }
             }
@@ -253,7 +161,10 @@ fn main() -> anyhow::Result<()> {
                 println!("{}", records_to_json(&records));
             } else {
                 println!("Available triggers:");
-                println!("{:<25} {:<55} {:<10} Category", "Trigger", "Description", "Type");
+                println!(
+                    "{:<25} {:<55} {:<10} Category",
+                    "Trigger", "Description", "Type"
+                );
                 println!("{:-<25} {:-<55} {:-<10} {:-<15}", "-", "-", "-", "-");
 
                 for r in &records {
@@ -286,7 +197,11 @@ fn main() -> anyhow::Result<()> {
 
             if force {
                 write_csv_file(&auto_records, &out_path)?;
-                eprintln!("Wrote {} triggers to {}", auto_records.len(), out_path.display());
+                eprintln!(
+                    "Wrote {} triggers to {}",
+                    auto_records.len(),
+                    out_path.display()
+                );
             } else {
                 let existing = read_csv_file(&out_path).unwrap_or_default();
                 let merged = merge_records(auto_records, existing);
@@ -314,7 +229,7 @@ fn main() -> anyhow::Result<()> {
                 .filter(|r| {
                     r.trigger.to_lowercase().contains(&q)
                         || r.description.to_lowercase().contains(&q)
-                    || r.category.to_lowercase().contains(&q)
+                        || r.category.to_lowercase().contains(&q)
                 })
                 .collect();
 
@@ -403,6 +318,93 @@ fn expand_path(path: &str) -> PathBuf {
     } else {
         PathBuf::from(path)
     }
+}
+
+fn expand_input(input: &str, config_dir: &str) -> anyhow::Result<String> {
+    let dir = expand_path(config_dir);
+    let configs = cli_expander_config::Config::load_dir(&dir)?;
+    let matcher = cli_expander_match::Matcher::from_files(configs);
+
+    let matched = matcher
+        .find_best(input)
+        .or_else(|| matcher.find_in(input))
+        .ok_or_else(|| anyhow::anyhow!("No match found for trigger in: {}", input))?;
+
+    if let Some(ref form_layout) = matched.form {
+        let fields = build_form_fields(matched.form_fields.as_ref());
+        let renderer = cli_expander_ui::CursiveFormRenderer;
+        let form_result = renderer.show_with_trigger("cli-expander", input, &fields);
+
+        let result = match form_result {
+            Ok(Some(result)) => result,
+            Ok(None) => return Err(anyhow::anyhow!("[debug] Form cancelled by user")),
+            Err(e) => {
+                eprintln!(
+                    "warning: form unavailable ({}); using default form values",
+                    e
+                );
+                default_form_result(&fields)
+            }
+        };
+
+        let output = cli_expander_render::FormExtension::render_form(
+            form_layout,
+            &matched.form_fields.as_ref().cloned().unwrap_or_default(),
+            &result.values,
+        );
+        return Ok(normalize_command_output(&output));
+    }
+
+    if let Some(ref replace) = matched.replace {
+        let engine = cli_expander_render::VariableEngine::default();
+        let mut vars = HashMap::new();
+
+        if let Some(ref var_defs) = matched.vars {
+            for var in var_defs {
+                if var.var_type == "form" {
+                    let fields = build_fields_from_form_var(var);
+
+                    if !fields.is_empty() {
+                        let renderer = cli_expander_ui::CursiveFormRenderer;
+                        let result =
+                            match renderer.show_with_trigger("cli-expander", input, &fields) {
+                                Ok(Some(result)) => result,
+                                Ok(None) => {
+                                    return Err(anyhow::anyhow!("[debug] Form cancelled by user"))
+                                }
+                                Err(e) => {
+                                    eprintln!(
+                                        "warning: form unavailable ({}); using default form values",
+                                        e
+                                    );
+                                    default_form_result(&fields)
+                                }
+                            };
+
+                        for (key, val) in &result.values {
+                            vars.insert(format!("{}.{}", var.name, key), val.clone());
+                            vars.insert(key.clone(), val.clone());
+                        }
+                    }
+                    break;
+                }
+            }
+
+            if let Ok(resolved) = engine.resolve_all(var_defs) {
+                for (key, val) in resolved {
+                    vars.entry(key).or_insert(val);
+                }
+            }
+        }
+
+        let template = cli_expander_render::Template::new(replace);
+        let output = template.render(&vars);
+        return Ok(normalize_command_output(&output));
+    }
+
+    Err(anyhow::anyhow!(
+        "Matched trigger has no replace or form output"
+    ))
 }
 
 #[allow(dead_code)]
