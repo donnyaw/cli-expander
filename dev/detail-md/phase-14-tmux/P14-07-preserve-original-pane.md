@@ -4,6 +4,10 @@
 
 Guarantee that popup picker actions inject into the pane that was selected before the popup opened.
 
+## Implementation Status
+
+Completed on branch `feature/tmux-integration` with tag `p14-07`.
+
 ## Why This Exists
 
 Tmux popups change interaction context. If a script uses the implicit current pane, injection can target the popup or the wrong pane. The user goal requires targeting the originally selected pane.

@@ -16,6 +16,11 @@ for cmd in tmux ce fzf python3; do
   fi
 done
 
+if ! tmux display-message -t "$target_pane" -p '#{pane_id}' >/dev/null 2>&1; then
+  printf 'ce-tmux-picker.sh: invalid tmux target pane: %s\n' "$target_pane" >&2
+  exit 2
+fi
+
 rows=$(ce list --json | python3 -c '
 import json
 import sys

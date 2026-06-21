@@ -61,6 +61,8 @@ Correct pattern:
 bind-key C-e display-popup -E "ce-tmux-picker '#{pane_id}'"
 ```
 
+`ce-tmux-picker.sh` validates this pane id before opening the picker. If the pane id is missing or no longer exists, it exits without injecting anything.
+
 ## Safety Rules
 
 - Tmux output inserts text only. It does not press Enter.
@@ -74,6 +76,7 @@ bind-key C-e display-popup -E "ce-tmux-picker '#{pane_id}'"
 |---|---|
 | `tmux send-keys` fails | Confirm you are inside tmux or pass a valid target pane |
 | Text goes to the wrong pane | Pass the original pane id with `--target-pane` |
+| Picker says target pane is invalid | Reopen the picker from a live pane and pass `#{pane_id}` |
 | Multiline expansion fails | Use a single-line trigger until paste-buffer support lands |
 | Picker cannot find `ce-tmux-picker.sh` | Put `integrations/tmux/` on `PATH` or copy the script to `~/.local/bin` |
 | Picker cannot find `fzf` | Install `fzf` |
