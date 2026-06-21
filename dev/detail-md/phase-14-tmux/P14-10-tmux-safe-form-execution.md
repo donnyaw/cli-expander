@@ -6,7 +6,7 @@ Make interactive form triggers usable from tmux without corrupting the target pa
 
 ## Implementation Status
 
-Completed on branch `feature/tmux-integration` with tag `p14-10`.
+Verified for merge with task tag `p14-10`.
 
 ## Why This Exists
 

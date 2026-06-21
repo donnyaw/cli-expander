@@ -6,7 +6,7 @@ Create a dedicated tmux integration location with install instructions, recommen
 
 ## Implementation Status
 
-Completed on branch `feature/tmux-integration` with tag `p14-05`.
+Verified for merge with task tag `p14-05`.
 
 ## Why This Exists
 

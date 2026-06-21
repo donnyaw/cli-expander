@@ -6,7 +6,7 @@ Build a tmux popup picker that lets the user select a trigger with `fzf` and inj
 
 ## Implementation Status
 
-Completed on branch `feature/tmux-integration` with tag `p14-06`.
+Verified for merge with task tag `p14-06`.
 
 ## Why This Exists
 

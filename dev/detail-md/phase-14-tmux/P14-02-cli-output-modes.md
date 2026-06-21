@@ -6,7 +6,7 @@ Add a user-facing output selector to `ce expand` so expanded text can go to stdo
 
 ## Implementation Status
 
-Completed on branch `feature/tmux-integration` with tag `p14-02`.
+Verified for merge with task tag `p14-02`.
 
 ## Why This Exists
 

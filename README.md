@@ -104,8 +104,8 @@ Triggers can be indexed into `~/.config/cli-expander/triggers.csv`. The CSV is g
 
 ```csv
 trigger,description,category,type,source_file
-:hello,"Hello World!",base,text,/home/.../base.yml
-:findx,"Interactive form with 4 fields",forms-advanced,form,/home/.../forms-advanced.yml
+:hello,"Hello World!",base,text,~/.config/cli-expander/matches/base.yml
+:findx,"Interactive form with 4 fields",forms-advanced,form,~/.config/cli-expander/matches/forms-advanced.yml
 ```
 
 ### Variables
@@ -146,7 +146,7 @@ ce config
 
 | Dependency | Used For |
 |------------|----------|
-| `fzf` | Bash `Ctrl+F` trigger search |
+| `fzf` | Bash `Ctrl+F` trigger search and tmux popup picker |
 | Clipboard provider | `clipboard` variables |
 | Interactive terminal with `TERM` set | Form rendering |
 
@@ -272,51 +272,66 @@ More examples are available in `examples/base.yml` and `examples/forms-advanced.
 | `ce form <layout>` | Open a simple interactive form for a layout string |
 | `ce config` | Show configuration paths and shell plugin names |
 
-The default match directory is `~/.config/cli-expander/matches`. Output modes are currently available on the explicit `expand` subcommand; bare shorthand keeps stdout behavior. Use `--target-pane` with tmux pane ids such as `%1` or `$TMUX_PANE` when a popup or script needs to inject into a specific pane. Tmux injection is currently single-line only; multiline output is rejected until paste-buffer support is added. Tmux output inserts text only unless `--enter` is explicitly set.
+The default match directory is `~/.config/cli-expander/matches`. Output modes are available on the explicit `expand` subcommand; bare shorthand keeps stdout behavior. Use `--target-pane` with tmux pane ids such as `%1` or `$TMUX_PANE` when a popup or script needs to inject into a specific pane. Tmux injection is currently single-line only; multiline output is rejected until paste-buffer support is added. Tmux output inserts text only unless `--enter` is explicitly set.
 
 Tmux setup notes and binding examples live in `integrations/tmux/`.
 
 ---
 
-## Tmux Integration (Experimental)
+## Tmux Integration
 
-The tmux integration on the `feature/tmux-integration` branch adds the ability to inject expanded text directly into tmux panes without requiring shell plugins. This feature is **experimental** and under active development.
+cli-expander can inject expanded text directly into tmux panes without requiring a shell plugin. This is useful for cross-pane workflows, terminal editors, full-screen terminal applications, and users who want a tmux-level picker that works independently from shell keybindings.
 
-### What Works
+### Capabilities
 
-| Feature | Status |
-|---------|--------|
-| `ce expand <trigger> --output tmux` | ✅ Tested — injects into current pane |
-| `ce expand <trigger> --output tmux --target-pane <id>` | ✅ Tested — injects into specific pane |
-| `ce expand <trigger> --output auto` | ✅ Tested — auto-detects tmux |
-| `ce expand <trigger> --output clipboard` | ✅ Tested — copies to clipboard |
-| `ce expand <trigger> --output tmux --enter` | ✅ Tested — injects then presses Enter |
-| `prefix + e` prompt expansion | ✅ Tested — press prefix then `e`, type trigger, get expansion |
-| `ce-tmux-picker.sh` fzf popup picker | ⚠️ Fzf UI works but injection into target pane may fail in some TUI contexts |
+| Feature | Behavior |
+|---------|----------|
+| `ce expand <trigger> --output tmux` | Injects the expansion into the current tmux pane |
+| `ce expand <trigger> --output tmux --target-pane <id>` | Injects into a specific tmux pane |
+| `ce expand <trigger> --output auto` | Uses tmux injection inside tmux; prints to stdout outside tmux |
+| `ce expand <trigger> --output clipboard` | Copies expansion to the system clipboard |
+| `ce expand <trigger> --output tmux --enter` | Injects the expansion and explicitly sends Enter |
+| `prefix + e` | Opens a tmux prompt for a trigger name and injects the result |
+| `prefix + Ctrl+e` | Opens an `fzf` popup picker over JSON-derived trigger rows |
 
-### Known Issues
+### Setup
 
-1. **`display-popup -E` breaks `#{pane_id}` expansion**: Using `-E` (client environment) flag with `display-popup` prevents tmux from expanding format variables like `#{pane_id}`. The current binding works without `-E` but may have PATH issues in some environments. Script-level `PATH` override is used as a workaround.
-
-2. **Popup picker injection uncertain in TUI apps**: When targeting a pane running a full-screen TUI (like OpenCode), `tmux send-keys` delivers keystrokes to the pane, but the TUI app's input handling may not render or process them visibly. This is an inherent limitation of sending literal keystrokes to TUI applications rather than piping text.
-
-3. **No paste-buffer support**: Multiline tmux injection is explicitly rejected with a clear error. A paste-buffer strategy (`tmux load-buffer` + `tmux paste-buffer`) should be implemented for reliable multiline and TUI-safe injection.
-
-4. **Shell plugin mode and tmux mode coexist but overlap**: Users need documentation to understand when to use each mode. Shell plugins are best for prompt-local expansion. Tmux mode is best for cross-pane injection.
-
-5. **Cursive forms may not render reliably in tmux popups**: Form triggers that use the Cursive TUI renderer may fail or behave unpredictably inside tmux `display-popup` windows. A wizard-style stdin/stdout form renderer would improve tmux reliability.
-
-### Branch
-
-All tmux work is on `feature/tmux-integration`. Each task is tagged (`p14-01` through `p14-12`). To build:
+Build and install the binary and picker helper:
 
 ```bash
-git checkout feature/tmux-integration
 cargo build --release
-cp target/release/ce ~/.local/bin/
+mkdir -p ~/.local/bin
+cp target/release/ce ~/.local/bin/ce
+cp integrations/tmux/ce-tmux-picker.sh ~/.local/bin/ce-tmux-picker.sh
 ```
 
-Planning documents are in `dev/detail-md/phase-14-tmux/` and `dev/cli-expander-dev-plan.csv`.
+Source the tmux integration from `.tmux.conf`:
+
+```tmux
+run-shell /path/to/cli-expander/integrations/tmux/cli-expander.tmux
+```
+
+Reload tmux:
+
+```bash
+tmux source-file ~/.tmux.conf
+```
+
+### Popup Picker Workflow
+
+Press `prefix + Ctrl+e` to open the popup picker. Select a trigger such as `:hello`, press Enter, and the popup closes after injecting the expansion into the pane that was selected before the popup opened.
+
+Form triggers run inside the popup. After the form is submitted, cli-expander injects only the completed expansion into the original pane. The expansion path also rejects unresolved `{{variable}}` placeholders before injection, so incomplete form output is reported as an error instead of being inserted silently.
+
+### Safety And Limits
+
+- Tmux output inserts text only by default; it does not press Enter unless `--enter` is set.
+- Multiline tmux injection is rejected with a clear error until paste-buffer support is implemented.
+- The `$|$` cursor marker is stripped in tmux mode because cursor positioning is currently shell-plugin-only.
+- Full-screen terminal apps must have their input area focused. `tmux send-keys` delivers literal keystrokes, but the target app decides how to handle them.
+- Shell plugin mode remains best for prompt-local expansion; tmux mode is best for cross-pane workflows and popup-trigger selection.
+
+Detailed setup, verification, and troubleshooting notes are in `integrations/tmux/`.
 
 ---
 
@@ -378,7 +393,7 @@ cli-expander/            Rust workspace
 
 The expansion pipeline is factored so the CLI can compute an expansion separately
 from how it is delivered. Today the default delivery path remains stdout for shell
-plugins; this also prepares the codebase for tmux output modes.
+plugins; tmux and clipboard modes use the same expansion pipeline with different delivery targets.
 
 ---
 
@@ -389,7 +404,7 @@ cargo test
 cargo clippy -- -D warnings
 ```
 
-Current test status: `86` tests pass across the workspace.
+Current test status: `90` tests pass across the workspace.
 
 Planning and agent notes live under `dev/`. Those files are historical/project-planning material and may describe planned work that is not part of the current user-facing behavior.
 

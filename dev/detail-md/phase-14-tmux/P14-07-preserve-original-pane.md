@@ -6,7 +6,7 @@ Guarantee that popup picker actions inject into the pane that was selected befor
 
 ## Implementation Status
 
-Completed on branch `feature/tmux-integration` with tag `p14-07`.
+Verified for merge with task tag `p14-07`.
 
 ## Why This Exists
 

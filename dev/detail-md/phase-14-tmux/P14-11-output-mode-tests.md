@@ -6,7 +6,7 @@ Add automated coverage for output routing and tmux command construction without 
 
 ## Implementation Status
 
-Completed on branch `feature/tmux-integration` with tag `p14-11`.
+Verified for merge with task tag `p14-11`.
 
 ## Why This Exists
 

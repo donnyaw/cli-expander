@@ -6,7 +6,7 @@ Allow tmux output mode to inject into a specific tmux pane using a `--target-pan
 
 ## Implementation Status
 
-Completed on branch `feature/tmux-integration` with tag `p14-03`.
+Verified for merge with task tag `p14-03`.
 
 ## Why This Exists
 

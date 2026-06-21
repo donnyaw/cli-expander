@@ -6,7 +6,7 @@ Support insertion into any focused tmux pane without detecting which application
 
 ## Implementation Status
 
-Completed on branch `feature/tmux-integration` with tag `p14-08`.
+Verified for merge with task tag `p14-08`.
 
 ## Why This Exists
 

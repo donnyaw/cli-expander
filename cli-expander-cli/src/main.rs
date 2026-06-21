@@ -382,6 +382,7 @@ fn expand_input(input: &str, config_dir: &str) -> anyhow::Result<String> {
             &matched.form_fields.as_ref().cloned().unwrap_or_default(),
             &result.values,
         );
+        ensure_no_unresolved_template_vars(&output)?;
         return Ok(normalize_command_output(&output));
     }
 
@@ -396,7 +397,7 @@ fn expand_input(input: &str, config_dir: &str) -> anyhow::Result<String> {
 
                     if !fields.is_empty() {
                         let renderer = cli_expander_ui::CursiveFormRenderer;
-                        let result =
+                        let mut result =
                             match renderer.show_with_trigger("cli-expander", input, &fields) {
                                 Ok(Some(result)) => result,
                                 Ok(None) => {
@@ -410,6 +411,11 @@ fn expand_input(input: &str, config_dir: &str) -> anyhow::Result<String> {
                                     default_form_result(&fields)
                                 }
                             };
+
+                        let defaults = default_form_result(&fields);
+                        for (key, val) in defaults.values {
+                            result.values.entry(key).or_insert(val);
+                        }
 
                         for (key, val) in &result.values {
                             vars.insert(format!("{}.{}", var.name, key), val.clone());
@@ -429,6 +435,7 @@ fn expand_input(input: &str, config_dir: &str) -> anyhow::Result<String> {
 
         let template = cli_expander_render::Template::new(replace);
         let output = template.render(&vars);
+        ensure_no_unresolved_template_vars(&output)?;
         return Ok(normalize_command_output(&output));
     }
 
@@ -522,6 +529,16 @@ fn default_form_result(fields: &[cli_expander_ui::FormField]) -> cli_expander_ui
     }
 
     cli_expander_ui::FormResult { values }
+}
+
+fn ensure_no_unresolved_template_vars(output: &str) -> anyhow::Result<()> {
+    if let Some(start) = output.find("{{") {
+        if let Some(end) = output[start + 2..].find("}}") {
+            let name = output[start + 2..start + 2 + end].trim();
+            anyhow::bail!("unresolved template variable in expansion: {{{{{}}}}}", name);
+        }
+    }
+    Ok(())
 }
 
 /// Build form fields from a form variable definition (verbose syntax)
@@ -979,5 +996,19 @@ params:
             normalize_command_output(output),
             "find . -name 'my  file.txt' -print"
         );
+    }
+
+    #[test]
+    fn test_ensure_no_unresolved_template_vars_accepts_resolved_output() {
+        let result = ensure_no_unresolved_template_vars("fd -t f . -X mv -t /tmp/old");
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_ensure_no_unresolved_template_vars_rejects_unresolved_output() {
+        let err = ensure_no_unresolved_template_vars("fd {{predicate}} {{path}}").unwrap_err();
+        assert!(err
+            .to_string()
+            .contains("unresolved template variable in expansion: {{predicate}}"));
     }
 }

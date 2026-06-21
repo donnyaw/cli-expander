@@ -6,7 +6,7 @@ Create a repeatable manual checklist for validating tmux behavior across panes, 
 
 ## Implementation Status
 
-Completed on branch `feature/tmux-integration` with tag `p14-12`. The full checklist is available at `integrations/tmux/README.md`.
+Verified for merge with task tag `p14-12`. The full checklist is available at `integrations/tmux/README.md`.
 
 ## Why This Exists
 

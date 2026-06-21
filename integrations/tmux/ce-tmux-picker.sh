@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Enable debug logging
-exec 2>/tmp/ce-picker-debug.log
-set -x
+# Enable debug logging with: CE_TMUX_PICKER_DEBUG=1 ce-tmux-picker.sh <pane-id>
+if [ "${CE_TMUX_PICKER_DEBUG:-}" = "1" ]; then
+  exec 2>/tmp/ce-picker-debug.log
+  set -x
+fi
 
 # Ensure ce and other tools are found in tmux popup context
 export PATH="$HOME/.local/bin:$PATH"
@@ -13,6 +15,12 @@ target_pane="${1:-}"
 if [ -z "$target_pane" ]; then
   printf 'ce-tmux-picker.sh: missing target pane id\n' >&2
   printf 'Usage: ce-tmux-picker.sh <tmux-pane-id>\n' >&2
+  exit 2
+fi
+
+if [[ "$target_pane" == *'#{'* ]]; then
+  printf 'ce-tmux-picker.sh: tmux pane id was not expanded: %s\n' "$target_pane" >&2
+  printf 'Reload integrations/tmux/cli-expander.tmux and try prefix + Ctrl+e again.\n' >&2
   exit 2
 fi
 
@@ -82,5 +90,4 @@ if [ $exit_code -ne 0 ]; then
   exit 1
 fi
 
-printf "\n✓ Expanded '%s' into pane %s\n" "$trigger" "$target_pane" >&2
-sleep 2
+printf "\nExpanded '%s' into pane %s\n" "$trigger" "$target_pane" >&2

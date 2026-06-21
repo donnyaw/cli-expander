@@ -4,7 +4,7 @@ This integration is for tmux users who want to insert `cli-expander` output into
 
 ## Current Status
 
-**Experimental.** This integration is under active development on the `feature/tmux-integration` branch.
+The tmux integration is implemented and verified for direct pane injection, target-pane injection, auto mode, explicit Enter, popup trigger selection, and form-trigger expansion into the original pane.
 
 Implemented:
 
@@ -12,11 +12,15 @@ Implemented:
 - `ce expand <trigger> --output tmux --target-pane <pane-id>`
 - `ce expand <trigger> --output auto`
 - `ce expand <trigger> --output clipboard`
+- `ce expand <trigger> --output tmux --enter`
 
 Implemented in this directory:
 
 - `ce-tmux-picker.sh` popup picker with `fzf`
 - JSON-derived TSV trigger rows to avoid fragile CSV comma parsing
+- Original-pane preservation for popup workflows
+- Automatic popup close after successful injection
+- Guardrails that reject unresolved `{{variable}}` placeholders before injection
 
 ## Direct Usage
 
@@ -55,7 +59,7 @@ Then restart tmux or reload config with `prefix + :` then `source-file ~/.tmux.c
 | `prefix + e` | Prompt to type a trigger name (e.g. `:hello`) and expand it inline in the current pane |
 | `prefix + Ctrl+e` | Open fzf popup picker to browse and select a trigger |
 
-The popup picker binding calls `ce-tmux-picker.sh`. Ensure `integrations/tmux/` is on your `PATH`, or copy the script to a directory already on `PATH`.
+The popup picker binding calls `ce-tmux-picker.sh`. Ensure `integrations/tmux/` is on your `PATH`, or copy the script to a directory already on `PATH` such as `~/.local/bin`.
 
 ### Workflow: Inline Expansion (prefix + e)
 
@@ -76,14 +80,14 @@ Popup workflows must preserve the original pane id. Once a popup opens, the popu
 Correct pattern:
 
 ```tmux
-bind-key C-e display-popup -E "ce-tmux-picker '#{pane_id}'"
+bind-key C-e run-shell 'tmux display-popup -E -T cli-expander -w 90% -h 80% "ce-tmux-picker.sh \"#{pane_id}\""'
 ```
 
-`ce-tmux-picker.sh` validates this pane id before opening the picker. If the pane id is missing or no longer exists, it exits without injecting anything.
+The `run-shell` wrapper lets tmux expand `#{pane_id}` before `display-popup -E` starts the popup command. `ce-tmux-picker.sh` validates this pane id before opening the picker. If the pane id is missing, unexpanded, or no longer exists, it exits without injecting anything.
 
 ## Generic Pane Workflow
 
-The MVP intentionally treats every selected pane the same. It sends literal text to the pane you target and does not inspect whether that pane is running Bash, Zsh, Fish, Vim, OpenCode, or another TUI.
+The integration intentionally treats every selected pane the same. It sends literal text to the pane you target and does not inspect whether that pane is running Bash, Zsh, Fish, Vim, OpenCode, or another TUI.
 
 This means the target application must already be ready to receive typed text. For example:
 
@@ -91,7 +95,7 @@ This means the target application must already be ready to receive typed text. F
 - Editors receive text only when they are in an input mode that accepts typing.
 - OpenCode or other TUIs receive text only when their input area is focused.
 
-App-specific behavior is intentionally deferred until the generic selected-pane workflow is stable.
+App-specific behavior is intentionally left to the target application and its focused input area.
 
 ## Form Triggers In Popup
 
@@ -101,7 +105,9 @@ The picker calls the same command for both text and form triggers:
 ce expand "$trigger" --output tmux --target-pane "$target_pane"
 ```
 
-If the selected trigger opens a form, the form runs in the popup process. After the form is submitted, only the completed expansion is injected into the original target pane. Canceling the form exits without injection.
+If the selected trigger opens a form, the form runs in the popup process. After the form is submitted, only the completed expansion is injected into the original target pane, and the popup closes automatically. Canceling the form exits without injection.
+
+Form defaults are merged for any missing field values, and cli-expander rejects unresolved `{{variable}}` placeholders before injecting text. This prevents incomplete commands such as `fd {{predicate}} {{path}} -X mv -t {{dest}}` from being inserted silently.
 
 ## Safety Rules
 
@@ -112,7 +118,7 @@ If the selected trigger opens a form, the form runs in the popup process. After 
 
 ## Manual Verification Checklist
 
-Run through these steps to validate the tmux integration works correctly. Perform this checklist after building from the `feature/tmux-integration` branch.
+Run through these steps to validate the tmux integration works correctly after building from source.
 
 ### Prerequisites
 
@@ -172,9 +178,9 @@ ce generate-csv --force
 2. Open a tmux session with two panes.
 3. Run picker directly with a pane id:
    `integrations/tmux/ce-tmux-picker.sh "$(tmux display-message -p '#{pane_id}')"`
-4. Expected: fzf popup opens with trigger list.
+4. Expected: fzf picker opens with a trigger list.
 5. Select `:hello` and press Enter.
-6. Expected: "Hello World!" is injected into the original pane.
+6. Expected: "Hello World!" is injected into the original pane and the popup closes.
 7. Reopen the picker and press Esc.
 8. Expected: No text is injected (picker cancelled cleanly).
 
@@ -197,6 +203,13 @@ ce generate-csv --force
 4. Expected: The completed expansion ("Say hello to <name>!") is injected into the original pane.
 5. Reopen picker, select `:greet`, and cancel the form.
 6. Expected: Nothing is injected into the pane.
+
+### Step 6b: Form Template Resolution
+
+1. Run picker and select a form trigger with multiple template variables, such as `:fd-move` if that trigger pack is installed.
+2. Submit the form with defaults or custom values.
+3. Expected: The injected output contains concrete values only.
+4. Expected: No unresolved placeholders such as `{{path}}`, `{{predicate}}`, or `{{dest}}` appear in the target pane.
 
 ### Step 7: --enter Flag
 
@@ -247,16 +260,16 @@ ce generate-csv --force
 | Picker says target pane is invalid | Reopen the picker from a live pane and pass `#{pane_id}` |
 | Text appears in the wrong app area | Focus the intended input area before opening the picker |
 | Form opens in the popup | Expected behavior; submit it to inject the completed result into the target pane |
+| Popup stays open after injection | Reload the integration file; the current binding uses `display-popup -E` so successful picker runs close automatically |
+| Output contains `{{variable}}` placeholders | Update to the current binary; unresolved template variables are rejected before injection |
 | Multiline expansion fails | Use a single-line trigger until paste-buffer support lands |
 | Picker cannot find `ce-tmux-picker.sh` | Put `integrations/tmux/` on `PATH` or copy the script to `~/.local/bin` |
 | Picker cannot find `fzf` | Install `fzf` |
 
 ## Known Issues
 
-1. **`display-popup -E` breaks `#{pane_id}` expansion**: The `-E` (client environment) flag prevents tmux from expanding format variables. The current binding avoids `-E` but may have PATH issues in minimal environments.
+1. **Injection into full-screen TUI apps**: Sending keystrokes via `tmux send-keys` into a pane running a TUI application may not produce visible results depending on the application's input state. The keystrokes are delivered but the app may buffer or ignore them.
 
-2. **Injection into full-screen TUI apps**: Sending keystrokes via `tmux send-keys` into a pane running a TUI application (OpenCode, Vim, etc.) may not produce visible results depending on the application's input state. The keystrokes are delivered but the app may buffer or ignore them.
+2. **No multiline support**: Multiline tmux injection is explicitly rejected. A paste-buffer strategy (`tmux load-buffer` + `paste-buffer`) is planned.
 
-3. **No multiline support**: Multiline tmux injection is explicitly rejected. A paste-buffer strategy (`tmux load-buffer` + `paste-buffer`) is planned.
-
-4. **Cursive forms unreliable in popups**: Form triggers using Cursive TUI may not render correctly inside `display-popup` windows. A wizard-style stdin/stdout form renderer would improve this.
+3. **Cursive forms depend on terminal state**: Form triggers use a terminal UI renderer. If a popup or terminal cannot host that UI, cli-expander falls back to defaults where possible and rejects unresolved template output.

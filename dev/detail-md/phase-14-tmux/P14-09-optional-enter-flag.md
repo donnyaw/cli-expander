@@ -6,7 +6,7 @@ Add an explicit flag that sends Enter after tmux insertion for trusted workflows
 
 ## Implementation Status
 
-Completed on branch `feature/tmux-integration` with tag `p14-09`.
+Verified for merge with task tag `p14-09`.
 
 ## Why This Exists
 

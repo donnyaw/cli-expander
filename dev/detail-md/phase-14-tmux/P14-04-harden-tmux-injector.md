@@ -6,7 +6,7 @@ Make tmux injection robust, predictable, and safe for literal command insertion.
 
 ## Implementation Status
 
-Completed on branch `feature/tmux-integration` with tag `p14-04`.
+Verified for merge with task tag `p14-04`.
 
 ## Why This Exists
 
