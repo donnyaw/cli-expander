@@ -278,6 +278,48 @@ Tmux setup notes and binding examples live in `integrations/tmux/`.
 
 ---
 
+## Tmux Integration (Experimental)
+
+The tmux integration on the `feature/tmux-integration` branch adds the ability to inject expanded text directly into tmux panes without requiring shell plugins. This feature is **experimental** and under active development.
+
+### What Works
+
+| Feature | Status |
+|---------|--------|
+| `ce expand <trigger> --output tmux` | ✅ Tested — injects into current pane |
+| `ce expand <trigger> --output tmux --target-pane <id>` | ✅ Tested — injects into specific pane |
+| `ce expand <trigger> --output auto` | ✅ Tested — auto-detects tmux |
+| `ce expand <trigger> --output clipboard` | ✅ Tested — copies to clipboard |
+| `ce expand <trigger> --output tmux --enter` | ✅ Tested — injects then presses Enter |
+| `prefix + e` prompt expansion | ✅ Tested — press prefix then `e`, type trigger, get expansion |
+| `ce-tmux-picker.sh` fzf popup picker | ⚠️ Fzf UI works but injection into target pane may fail in some TUI contexts |
+
+### Known Issues
+
+1. **`display-popup -E` breaks `#{pane_id}` expansion**: Using `-E` (client environment) flag with `display-popup` prevents tmux from expanding format variables like `#{pane_id}`. The current binding works without `-E` but may have PATH issues in some environments. Script-level `PATH` override is used as a workaround.
+
+2. **Popup picker injection uncertain in TUI apps**: When targeting a pane running a full-screen TUI (like OpenCode), `tmux send-keys` delivers keystrokes to the pane, but the TUI app's input handling may not render or process them visibly. This is an inherent limitation of sending literal keystrokes to TUI applications rather than piping text.
+
+3. **No paste-buffer support**: Multiline tmux injection is explicitly rejected with a clear error. A paste-buffer strategy (`tmux load-buffer` + `tmux paste-buffer`) should be implemented for reliable multiline and TUI-safe injection.
+
+4. **Shell plugin mode and tmux mode coexist but overlap**: Users need documentation to understand when to use each mode. Shell plugins are best for prompt-local expansion. Tmux mode is best for cross-pane injection.
+
+5. **Cursive forms may not render reliably in tmux popups**: Form triggers that use the Cursive TUI renderer may fail or behave unpredictably inside tmux `display-popup` windows. A wizard-style stdin/stdout form renderer would improve tmux reliability.
+
+### Branch
+
+All tmux work is on `feature/tmux-integration`. Each task is tagged (`p14-01` through `p14-12`). To build:
+
+```bash
+git checkout feature/tmux-integration
+cargo build --release
+cp target/release/ce ~/.local/bin/
+```
+
+Planning documents are in `dev/detail-md/phase-14-tmux/` and `dev/cli-expander-dev-plan.csv`.
+
+---
+
 ## Configuration
 
 cli-expander recursively loads `.yml` and `.yaml` files from the match directory.

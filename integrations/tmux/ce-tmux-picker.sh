@@ -1,6 +1,13 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Enable debug logging
+exec 2>/tmp/ce-picker-debug.log
+set -x
+
+# Ensure ce and other tools are found in tmux popup context
+export PATH="$HOME/.local/bin:$PATH"
+
 target_pane="${1:-}"
 
 if [ -z "$target_pane" ]; then
@@ -8,6 +15,8 @@ if [ -z "$target_pane" ]; then
   printf 'Usage: ce-tmux-picker.sh <tmux-pane-id>\n' >&2
   exit 2
 fi
+
+printf "Target pane: %s\n" "$target_pane" >&2
 
 for cmd in tmux ce fzf python3; do
   if ! command -v "$cmd" >/dev/null 2>&1; then
@@ -20,6 +29,8 @@ if ! tmux display-message -t "$target_pane" -p '#{pane_id}' >/dev/null 2>&1; the
   printf 'ce-tmux-picker.sh: invalid tmux target pane: %s\n' "$target_pane" >&2
   exit 2
 fi
+
+printf "All checks passed\n" >&2
 
 rows=$(ce list --json | python3 -c '
 import json
@@ -42,7 +53,7 @@ selected=$(printf '%s\n' "$rows" | fzf \
   --delimiter=$'\t' \
   --with-nth=1,2 \
   --nth=1,2 \
-  --preview='ce details {1} 2>/dev/null' \
+  --preview='$HOME/.local/bin/ce details {1} 2>/dev/null' \
   --preview-window=right:60%:wrap \
   --header='Enter: inject into selected pane | Esc: cancel' \
   --height=50% \
@@ -59,4 +70,17 @@ if [ -z "$trigger" ]; then
   exit 1
 fi
 
-ce expand "$trigger" --output tmux --target-pane "$target_pane"
+set +e
+"$HOME/.local/bin/ce" expand "$trigger" --output tmux --target-pane "$target_pane" 2>/tmp/ce-picker-error.log
+exit_code=$?
+set -e
+
+if [ $exit_code -ne 0 ]; then
+  printf "\nExpand FAILED (exit code: %d)\n" $exit_code >&2
+  printf "See /tmp/ce-picker-error.log for details\n" >&2
+  sleep 4
+  exit 1
+fi
+
+printf "\n✓ Expanded '%s' into pane %s\n" "$trigger" "$target_pane" >&2
+sleep 2

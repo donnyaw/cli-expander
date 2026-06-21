@@ -4,6 +4,8 @@ This integration is for tmux users who want to insert `cli-expander` output into
 
 ## Current Status
 
+**Experimental.** This integration is under active development on the `feature/tmux-integration` branch.
+
 Implemented:
 
 - `ce expand <trigger> --output tmux`
@@ -15,11 +17,6 @@ Implemented in this directory:
 
 - `ce-tmux-picker.sh` popup picker with `fzf`
 - JSON-derived TSV trigger rows to avoid fragile CSV comma parsing
-
-Planned next:
-
-- Additional original-pane preservation hardening for popup workflows
-- Tmux-safe form execution from popup
 
 ## Direct Usage
 
@@ -49,7 +46,28 @@ Source the integration file from your tmux config:
 run-shell /path/to/cli-expander/integrations/tmux/cli-expander.tmux
 ```
 
+Then restart tmux or reload config with `prefix + :` then `source-file ~/.tmux.conf`.
+
+### Available Keybindings
+
+| Binding | Action |
+|---------|--------|
+| `prefix + e` | Prompt to type a trigger name (e.g. `:hello`) and expand it inline in the current pane |
+| `prefix + Ctrl+e` | Open fzf popup picker to browse and select a trigger |
+
 The popup picker binding calls `ce-tmux-picker.sh`. Ensure `integrations/tmux/` is on your `PATH`, or copy the script to a directory already on `PATH`.
+
+### Workflow: Inline Expansion (prefix + e)
+
+Press `prefix + e` (your prefix is `Ctrl+Space` by default in this config). A prompt appears at the bottom of the tmux window:
+
+```
+cli-expander:
+```
+
+Type a trigger like `:hello` and press Enter. The expanded text is injected into your current pane immediately.
+
+This works in any pane — shell prompt, editor, TUI — without needing the shell plugin. It's the "prefix + :" equivalent for cli-expander.
 
 ## Selected-Pane Rule
 
@@ -232,3 +250,13 @@ ce generate-csv --force
 | Multiline expansion fails | Use a single-line trigger until paste-buffer support lands |
 | Picker cannot find `ce-tmux-picker.sh` | Put `integrations/tmux/` on `PATH` or copy the script to `~/.local/bin` |
 | Picker cannot find `fzf` | Install `fzf` |
+
+## Known Issues
+
+1. **`display-popup -E` breaks `#{pane_id}` expansion**: The `-E` (client environment) flag prevents tmux from expanding format variables. The current binding avoids `-E` but may have PATH issues in minimal environments.
+
+2. **Injection into full-screen TUI apps**: Sending keystrokes via `tmux send-keys` into a pane running a TUI application (OpenCode, Vim, etc.) may not produce visible results depending on the application's input state. The keystrokes are delivered but the app may buffer or ignore them.
+
+3. **No multiline support**: Multiline tmux injection is explicitly rejected. A paste-buffer strategy (`tmux load-buffer` + `paste-buffer`) is planned.
+
+4. **Cursive forms unreliable in popups**: Form triggers using Cursive TUI may not render correctly inside `display-popup` windows. A wizard-style stdin/stdout form renderer would improve this.
