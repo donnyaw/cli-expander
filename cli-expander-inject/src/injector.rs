@@ -61,7 +61,8 @@ impl TmuxInjector {
         text: &str,
         options: &TmuxInjectOptions,
     ) -> anyhow::Result<()> {
-        let args = tmux_send_keys_args(text, options.target_pane.as_deref())?;
+        let text = normalize_tmux_text(text)?;
+        let args = tmux_send_keys_args(&text, options.target_pane.as_deref())?;
         let output = std::process::Command::new("tmux")
             .args(args)
             .output()
@@ -125,6 +126,15 @@ pub fn tmux_send_keys_args(text: &str, target_pane: Option<&str>) -> anyhow::Res
     Ok(args)
 }
 
+pub fn normalize_tmux_text(text: &str) -> anyhow::Result<String> {
+    if text.contains('\n') || text.contains('\r') {
+        anyhow::bail!(
+            "tmux multiline injection is not supported yet; use a single-line expansion or wait for paste-buffer support"
+        );
+    }
+    Ok(text.replace("$|$", ""))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -161,5 +171,17 @@ mod tests {
     fn test_tmux_send_keys_args_rejects_empty_target() {
         let err = tmux_send_keys_args("hello", Some("")).unwrap_err();
         assert!(err.to_string().contains("target pane cannot be empty"));
+    }
+
+    #[test]
+    fn test_normalize_tmux_text_strips_cursor_marker() {
+        let text = normalize_tmux_text("git checkout $|$main").unwrap();
+        assert_eq!(text, "git checkout main");
+    }
+
+    #[test]
+    fn test_normalize_tmux_text_rejects_newlines() {
+        let err = normalize_tmux_text("one\ntwo").unwrap_err();
+        assert!(err.to_string().contains("multiline injection"));
     }
 }

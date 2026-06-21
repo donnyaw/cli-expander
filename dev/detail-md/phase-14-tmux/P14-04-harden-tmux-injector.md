@@ -4,6 +4,10 @@
 
 Make tmux injection robust, predictable, and safe for literal command insertion.
 
+## Implementation Status
+
+Completed on branch `feature/tmux-integration` with tag `p14-04`.
+
 ## Why This Exists
 
 Tmux injection is powerful because it can send text to any pane. It must avoid accidental execution, shell interpretation surprises, and unclear failures.
