@@ -84,20 +84,6 @@ Bash supports `Ctrl+F` and `Alt+F` trigger discovery through `fzf`. The search u
 
 Zsh and Fish currently support expansion keybindings, but their checked-in plugins do not yet implement `Ctrl+F` fzf search.
 
-### OpenCode Prompt Commands
-
-Status: canceled. The OpenCode integration branch is no longer being developed;
-future prompt expansion work should use Espanso instead.
-
-cli-expander can also act as an AI prompt registry for OpenCode. Store prompt
-matches under `~/.config/cli-expander/matches/ai-prompts/`, then install the
-OpenCode command files from `integrations/opencode/commands/`.
-
-Use `/prompts` to list triggers or `/prompt :ai-review` to expand a prompt from
-the registry inside OpenCode.
-
-See `integrations/opencode/README.md` and `examples/ai-prompts/`.
-
 ### CSV Trigger Database
 
 Triggers can be indexed into `~/.config/cli-expander/triggers.csv`. The CSV is generated from YAML match files and merge mode preserves manual rows.
