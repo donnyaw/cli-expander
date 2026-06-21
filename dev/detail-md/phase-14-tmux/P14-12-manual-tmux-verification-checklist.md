@@ -4,6 +4,10 @@
 
 Create a repeatable manual checklist for validating tmux behavior across panes, popup picker, selected-pane targeting, multiline insertion, and explicit execution.
 
+## Implementation Status
+
+Completed on branch `feature/tmux-integration` with tag `p14-12`. The full checklist is available at `integrations/tmux/README.md`.
+
 ## Why This Exists
 
 Some tmux behaviors are hard to fully test in automated CI. Pane focus, popup lifecycle, and terminal UI behavior require manual verification.

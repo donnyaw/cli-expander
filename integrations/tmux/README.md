@@ -92,6 +92,134 @@ If the selected trigger opens a form, the form runs in the popup process. After 
 - The `$|$` cursor marker is stripped in tmux mode because cursor positioning is currently shell-plugin-only.
 - Use `--target-pane` for popup and script workflows.
 
+## Manual Verification Checklist
+
+Run through these steps to validate the tmux integration works correctly. Perform this checklist after building from the `feature/tmux-integration` branch.
+
+### Prerequisites
+
+```bash
+cargo build --release
+cp target/release/ce ~/.local/bin/
+mkdir -p ~/.config/cli-expander/matches
+
+cat > ~/.config/cli-expander/matches/base.yml << 'EOF'
+matches:
+  - trigger: ":hello"
+    replace: "Hello World!"
+  - trigger: ":date"
+    replace: "{{now}}"
+    vars:
+      - name: now
+        type: date
+        params:
+          format: "%Y-%m-%d"
+EOF
+
+ce generate-csv --force
+```
+
+### Step 1: Direct Tmux Injection
+
+1. Open a tmux session.
+2. Run: `ce expand ":hello" --output tmux`
+3. Expected: "Hello World!" appears in the current tmux prompt.
+4. Run: `ce expand ":date" --output tmux`
+5. Expected: today's date appears in the prompt.
+
+### Step 2: Target Pane Injection
+
+1. Open tmux with two panes (split horizontally with `C-b "`).
+2. Note pane A id: `tmux display-message -p '#{pane_id}'`
+3. Focus pane B.
+4. Run: `ce expand ":hello" --output tmux --target-pane <pane-A-id>`
+5. Expected: "Hello World!" appears in pane A, not pane B.
+6. Focus pane A and repeat targeting pane B.
+
+### Step 3: Auto Mode
+
+1. Inside tmux: `ce expand ":hello" --output auto`
+2. Expected: Text is injected into current pane (behaves like `--output tmux`).
+3. Outside tmux: `ce expand ":hello" --output auto`
+4. Expected: Text is printed to stdout.
+
+### Step 4: Clipboard Mode
+
+1. Run: `ce expand ":hello" --output clipboard`
+2. Expected: Text is copied to clipboard (may fail if no clipboard provider is available).
+
+### Step 5: Popup Picker
+
+1. Ensure `integrations/tmux/ce-tmux-picker.sh` is on `PATH` or copy to `~/.local/bin/`.
+2. Open a tmux session with two panes.
+3. Run picker directly with a pane id:
+   `integrations/tmux/ce-tmux-picker.sh "$(tmux display-message -p '#{pane_id}')"`
+4. Expected: fzf popup opens with trigger list.
+5. Select `:hello` and press Enter.
+6. Expected: "Hello World!" is injected into the original pane.
+7. Reopen the picker and press Esc.
+8. Expected: No text is injected (picker cancelled cleanly).
+
+### Step 6: Form Trigger In Popup
+
+1. Create a form trigger:
+   ```bash
+   cat > ~/.config/cli-expander/matches/form-test.yml << 'EOF'
+   matches:
+     - trigger: ":greet"
+       form: "Say hello to [[name]]!"
+       form_fields:
+         name:
+           placeholder: "Enter a name"
+   EOF
+   ce generate-csv --force
+   ```
+2. Run picker and select `:greet`.
+3. Expected: Form renders in the popup. Fill in a name and submit.
+4. Expected: The completed expansion ("Say hello to <name>!") is injected into the original pane.
+5. Reopen picker, select `:greet`, and cancel the form.
+6. Expected: Nothing is injected into the pane.
+
+### Step 7: --enter Flag
+
+1. Run: `ce expand ":hello" --output tmux --enter`
+2. Expected: "Hello World!" appears followed by an Enter keypress (command executes).
+
+### Step 8: Error Handling
+
+1. Outside tmux, run: `ce expand ":hello" --output tmux`
+2. Expected: Clear error message about tmux not available.
+3. Run: `ce expand ":hello" --output tmux --target-pane "nonexistent"`
+4. Expected: Error about invalid target pane (or tmux error).
+5. Run: `ce expand ":missing-trigger" --output tmux`
+6. Expected: Error about no match found.
+7. Run: `ce expand ":hello" --output stdout --enter`
+8. Expected: Error that `--enter` is only supported with tmux output.
+
+### Step 9: Generic Pane Targets
+
+1. Open a text editor in one tmux pane (Vim with insert mode).
+2. Run picker from the other pane, targeting the editor pane.
+3. Expected: The expanded text appears as typed input in the editor.
+4. Open a shell prompt in another pane and repeat.
+5. Expected: Text appears in the shell prompt.
+
+### Step 10: Multiline Rejection
+
+1. Create a multiline trigger:
+   ```bash
+   cat > ~/.config/cli-expander/matches/multiline-test.yml << 'EOF'
+   matches:
+     - trigger: ":multi"
+       replace: |
+         line one
+         line two
+   EOF
+   ce generate-csv --force
+   ```
+2. Run: `ce expand ":multi" --output tmux`
+3. Expected: Error message about multiline injection not being supported yet.
+
 ## Troubleshooting
 
 | Problem | Fix |
