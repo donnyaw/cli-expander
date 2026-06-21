@@ -4,6 +4,10 @@
 
 Build a tmux popup picker that lets the user select a trigger with `fzf` and inject the expanded result into the original selected pane.
 
+## Implementation Status
+
+Completed on branch `feature/tmux-integration` with tag `p14-06`.
+
 ## Why This Exists
 
 The main tmux user experience should not require memorizing every trigger. A popup picker gives tmux users fast discovery and selected-pane insertion.

@@ -11,10 +11,14 @@ Implemented:
 - `ce expand <trigger> --output auto`
 - `ce expand <trigger> --output clipboard`
 
-Planned next:
+Implemented in this directory:
 
 - `ce-tmux-picker.sh` popup picker with `fzf`
-- Original-pane preservation for popup workflows
+- JSON-derived TSV trigger rows to avoid fragile CSV comma parsing
+
+Planned next:
+
+- Additional original-pane preservation hardening for popup workflows
 - Tmux-safe form execution from popup
 
 ## Direct Usage
@@ -45,7 +49,7 @@ Source the integration file from your tmux config:
 run-shell /path/to/cli-expander/integrations/tmux/cli-expander.tmux
 ```
 
-The popup picker binding is included but remains disabled until `P14-06` implements `ce-tmux-picker.sh`.
+The popup picker binding calls `ce-tmux-picker.sh`. Ensure `integrations/tmux/` is on your `PATH`, or copy the script to a directory already on `PATH`.
 
 ## Selected-Pane Rule
 
@@ -71,4 +75,5 @@ bind-key C-e display-popup -E "ce-tmux-picker '#{pane_id}'"
 | `tmux send-keys` fails | Confirm you are inside tmux or pass a valid target pane |
 | Text goes to the wrong pane | Pass the original pane id with `--target-pane` |
 | Multiline expansion fails | Use a single-line trigger until paste-buffer support lands |
-| Picker script says not implemented | Complete `P14-06` |
+| Picker cannot find `ce-tmux-picker.sh` | Put `integrations/tmux/` on `PATH` or copy the script to `~/.local/bin` |
+| Picker cannot find `fzf` | Install `fzf` |
