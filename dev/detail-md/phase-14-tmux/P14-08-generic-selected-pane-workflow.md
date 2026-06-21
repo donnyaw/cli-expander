@@ -4,6 +4,10 @@
 
 Support insertion into any focused tmux pane without detecting which application is running inside that pane.
 
+## Implementation Status
+
+Completed on branch `feature/tmux-integration` with tag `p14-08`.
+
 ## Why This Exists
 
 The agreed MVP is selected-pane support first. App-specific behavior for Vim, OpenCode, shells, or TUIs can add complexity later. The first reliable version should simply insert literal expanded text into the selected pane.
