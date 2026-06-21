@@ -395,21 +395,6 @@ The expansion pipeline is factored so the CLI can compute an expansion separatel
 from how it is delivered. Today the default delivery path remains stdout for shell
 plugins; tmux and clipboard modes use the same expansion pipeline with different delivery targets.
 
----
-
-## Development
-
-```bash
-cargo test
-cargo clippy -- -D warnings
-```
-
-Current test status: `90` tests pass across the workspace.
-
-Planning and agent notes live under `dev/`. Those files are historical/project-planning material and may describe planned work that is not part of the current user-facing behavior.
-
----
-
 ## License
 
 MIT
