@@ -20,7 +20,7 @@ fi
 
 if [[ "$target_pane" == *'#{'* ]]; then
   printf 'ce-tmux-picker.sh: tmux pane id was not expanded: %s\n' "$target_pane" >&2
-  printf 'Reload integrations/tmux/cli-expander.tmux and try prefix + Ctrl+e again.\n' >&2
+  printf 'Reload integrations/tmux/cli-expander.tmux and try prefix + Ctrl+g again.\n' >&2
   exit 2
 fi
 

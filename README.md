@@ -278,7 +278,7 @@ cli-expander can inject expanded text directly into tmux panes without requiring
 | `ce expand <trigger> --output clipboard` | Copies expansion to the system clipboard |
 | `ce expand <trigger> --output tmux --enter` | Injects the expansion and explicitly sends Enter |
 | `prefix + e` | Opens a tmux prompt for a trigger name and injects the result |
-| `prefix + Ctrl+e` | Opens an `fzf` popup picker over JSON-derived trigger rows |
+| `prefix + Ctrl+g` | Opens an `fzf` popup picker over JSON-derived trigger rows |
 
 ### Setup
 
@@ -305,7 +305,7 @@ tmux source-file ~/.tmux.conf
 
 ### Popup Picker Workflow
 
-Press `prefix + Ctrl+e` to open the popup picker. Select a trigger such as `:hello`, press Enter, and the popup closes after injecting the expansion into the pane that was selected before the popup opened.
+Press `prefix + Ctrl+g` to open the popup picker. Select a trigger such as `:hello`, press Enter, and the popup closes after injecting the expansion into the pane that was selected before the popup opened.
 
 Form triggers run inside the popup. After the form is submitted, cli-expander injects only the completed expansion into the original pane. The expansion path also rejects unresolved `{{variable}}` placeholders before injection, so incomplete form output is reported as an error instead of being inserted silently.
 

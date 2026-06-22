@@ -57,7 +57,7 @@ Then restart tmux or reload config with `prefix + :` then `source-file ~/.tmux.c
 | Binding | Action |
 |---------|--------|
 | `prefix + e` | Prompt to type a trigger name (e.g. `:hello`) and expand it inline in the current pane |
-| `prefix + Ctrl+e` | Open fzf popup picker to browse and select a trigger |
+| `prefix + Ctrl+g` | Open fzf popup picker to browse and select a trigger |
 
 The popup picker binding calls `ce-tmux-picker.sh`. Ensure `integrations/tmux/` is on your `PATH`, or copy the script to a directory already on `PATH` such as `~/.local/bin`.
 
@@ -80,7 +80,7 @@ Popup workflows must preserve the original pane id. Once a popup opens, the popu
 Correct pattern:
 
 ```tmux
-bind-key C-e run-shell 'tmux display-popup -E -T cli-expander -w 90% -h 80% "ce-tmux-picker.sh \"#{pane_id}\""'
+bind-key C-g run-shell 'tmux display-popup -E -T cli-expander -w 90% -h 80% "ce-tmux-picker.sh \"#{pane_id}\""'
 ```
 
 The `run-shell` wrapper lets tmux expand `#{pane_id}` before `display-popup -E` starts the popup command. `ce-tmux-picker.sh` validates this pane id before opening the picker. If the pane id is missing, unexpanded, or no longer exists, it exits without injecting anything.
