@@ -107,6 +107,58 @@ fn display_label(label: &str, searchable: bool) -> String {
     }
 }
 
+fn normalize_paste_text(text: String) -> String {
+    text.trim_end_matches(['\r', '\n']).to_string()
+}
+
+fn tmux_buffer_text() -> Option<String> {
+    if std::env::var_os("TMUX").is_none() {
+        return None;
+    }
+
+    let output = std::process::Command::new("tmux")
+        .arg("show-buffer")
+        .output()
+        .ok()?;
+
+    if !output.status.success() || output.stdout.is_empty() {
+        return None;
+    }
+
+    String::from_utf8(output.stdout)
+        .ok()
+        .map(normalize_paste_text)
+        .filter(|text| !text.is_empty())
+}
+
+fn clipboard_text() -> Option<String> {
+    if let Some(text) = tmux_buffer_text() {
+        return Some(text);
+    }
+
+    arboard::Clipboard::new()
+        .ok()
+        .and_then(|mut clipboard| clipboard.get_text().ok())
+        .map(normalize_paste_text)
+        .filter(|text| !text.is_empty())
+}
+
+fn insert_at_edit_cursor(view: &mut cursive::views::EditView, text: &str) {
+    if text.is_empty() {
+        return;
+    }
+
+    let content = (*view.get_content()).clone();
+    let mut cursor = view.get_cursor().min(content.len());
+    while cursor > 0 && !content.is_char_boundary(cursor) {
+        cursor -= 1;
+    }
+
+    let new = format!("{}{}{}", &content[..cursor], text, &content[cursor..]);
+    let _ = view.set_content(new);
+    view.set_cursor(cursor + text.len());
+}
+
 fn indented_view<V: cursive::View + 'static>(view: V) -> cursive::views::LinearLayout {
     cursive::views::LinearLayout::horizontal()
         .child(cursive::views::TextView::new("  "))
@@ -275,6 +327,7 @@ fn open_dropdown_search(
 
 fn render_cursive_form(title: &str, fields: &[FormField]) -> anyhow::Result<Option<FormResult>> {
     use cursive::align::HAlign;
+    use cursive::event::Event;
     use cursive::event::Key;
     use cursive::traits::{Nameable, Resizable};
     use cursive::views::{
@@ -317,7 +370,7 @@ fn render_cursive_form(title: &str, fields: &[FormField]) -> anyhow::Result<Opti
 
     let mut layout = LinearLayout::vertical();
     layout.add_child(TextView::new(
-        "Tab next | / search | Ctrl+Enter submit | Ctrl+W delete word | Ctrl+X clear",
+        "Tab next | / search | Ctrl+V paste tmux/clipboard | Ctrl+X clear",
     ));
     layout.add_child(TextView::new(
         "-----------------------------------------------",
@@ -385,7 +438,9 @@ fn render_cursive_form(title: &str, fields: &[FormField]) -> anyhow::Result<Opti
                             field_label.clone(),
                             option_store_for_search.clone(),
                         );
-                    });
+                    })
+                    .on_event(Key::Enter, |_| {})
+                    .on_event(Event::CtrlChar('j'), |_| {});
             add_field_block(&mut layout, display_label(&label, true), searchable);
 
             if let Some(ref dep_name) = field.depends_on {
@@ -465,10 +520,14 @@ fn render_cursive_form(title: &str, fields: &[FormField]) -> anyhow::Result<Opti
                 edit
             };
 
-            // Wrap EditView with Ctrl+W (delete word backward) and Ctrl+X (clear field)
-            use cursive::event::Event;
+            // Name the EditView directly so the submit handler can find it by type
+            let edit = edit.with_name(name.clone());
+            // Wrap EditView with Ctrl+W (delete word backward), Ctrl+X (clear field),
+            // Ctrl+V (paste), and consume Enter/Ctrl+J to prevent tmux paste newlines
+            // from propagating to the Submit button.
             let wrapped = OnEventView::new(edit)
                 .on_pre_event_inner(Event::CtrlChar('w'), |v, _| {
+                    let mut v = v.get_mut();
                     // Delete word backward
                     let content = (*v.get_content()).clone();
                     let cursor = v.get_cursor();
@@ -487,15 +546,26 @@ fn render_cursive_form(title: &str, fields: &[FormField]) -> anyhow::Result<Opti
                     Some(cursive::event::EventResult::Consumed(None))
                 })
                 .on_pre_event_inner(Event::CtrlChar('x'), |v, _| {
+                    let mut v = v.get_mut();
                     // Clear entire field
                     let _ = v.set_content("");
                     Some(cursive::event::EventResult::Consumed(None))
-                });
+                })
+                .on_pre_event_inner(Event::CtrlChar('v'), |v, _| {
+                    // Prefer tmux's paste buffer inside tmux; fall back to desktop clipboard.
+                    if let Some(text) = clipboard_text() {
+                        let mut v = v.get_mut();
+                        insert_at_edit_cursor(&mut v, &text);
+                    }
+                    Some(cursive::event::EventResult::Consumed(None))
+                })
+                .on_event(Key::Enter, |_| {})
+                .on_event(Event::CtrlChar('j'), |_| {});
 
             add_field_block(
                 &mut layout,
                 display_label(&label, false),
-                wrapped.with_name(name.clone()).min_width(50),
+                wrapped.min_width(50),
             );
         }
     }
@@ -586,9 +656,9 @@ fn render_cursive_form(title: &str, fields: &[FormField]) -> anyhow::Result<Opti
 
     siv.set_fps(30);
 
-    // Swallow Enter globally so paste trailing newlines don't trigger Submit
-    // Users must click the Submit or Cancel button (Tab + Enter) to close the form
-    siv.add_global_callback(Key::Enter, |_| {});
+    // Enter is consumed per-field (EditView/SelectView) so tmux paste trailing
+    // newlines don't propagate. Ctrl+V reads tmux show-buffer first, then the
+    // desktop clipboard, avoiding tmux paste-buffer byte replay into Cursive.
 
     siv.run();
 
@@ -598,7 +668,7 @@ fn render_cursive_form(title: &str, fields: &[FormField]) -> anyhow::Result<Opti
 
 #[cfg(test)]
 mod tests {
-    use super::filter_options;
+    use super::{filter_options, normalize_paste_text};
 
     #[test]
     fn test_filter_options_matches_substrings_case_insensitive() {
@@ -618,5 +688,21 @@ mod tests {
     fn test_filter_options_returns_all_for_empty_query() {
         let options = vec!["A".to_string(), "B".to_string()];
         assert_eq!(filter_options(&options, ""), options);
+    }
+
+    #[test]
+    fn test_normalize_paste_text_removes_trailing_newlines_only() {
+        assert_eq!(
+            normalize_paste_text("/tmp/a path\n".to_string()),
+            "/tmp/a path"
+        );
+        assert_eq!(
+            normalize_paste_text("/tmp/a path\r\n\n".to_string()),
+            "/tmp/a path"
+        );
+        assert_eq!(
+            normalize_paste_text(" /tmp/a path ".to_string()),
+            " /tmp/a path "
+        );
     }
 }

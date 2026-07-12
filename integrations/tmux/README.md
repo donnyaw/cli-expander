@@ -58,6 +58,7 @@ Then restart tmux or reload config with `prefix + :` then `source-file ~/.tmux.c
 |---------|--------|
 | `prefix + e` | Prompt to type a trigger name (e.g. `:hello`) and expand it inline in the current pane |
 | `prefix + Ctrl+g` | Open fzf popup picker to browse and select a trigger |
+| `prefix + ]` | Normal tmux paste, except inside cli-expander forms where it sends `Ctrl+V` for safe paste |
 
 The popup picker binding calls `ce-tmux-picker.sh`. Ensure `integrations/tmux/` is on your `PATH`, or copy the script to a directory already on `PATH` such as `~/.local/bin`.
 
@@ -108,6 +109,20 @@ ce expand "$trigger" --output tmux --target-pane "$target_pane"
 If the selected trigger opens a form, the form runs in the popup process. After the form is submitted, only the completed expansion is injected into the original target pane, and the popup closes automatically. Canceling the form exits without injection.
 
 Form defaults are merged for any missing field values, and cli-expander rejects unresolved `{{variable}}` placeholders before injecting text. This prevents incomplete commands such as `fd {{predicate}} {{path}} -X mv -t {{dest}}` from being inserted silently.
+
+### Pasting Paths From Yazi Or Tmux
+
+When a form field is focused, use `Ctrl+V` inside cli-expander to paste. Inside tmux, `Ctrl+V` reads `tmux show-buffer` first and falls back to the desktop clipboard. This avoids replaying tmux paste bytes into the Cursive form.
+
+The checked-in tmux integration also keeps your `prefix + ]` habit: it conditionally sends `Ctrl+V` when the active pane command is `ce` or `cli-expander`, and uses normal `paste-buffer` everywhere else.
+
+Recommended workflow:
+
+1. Copy/yank the path in Yazi or tmux copy-mode.
+2. Return to the cli-expander form field.
+3. Press `Ctrl+V` in the field, or `prefix + ]` if the tmux integration is loaded.
+
+If you do not load `integrations/tmux/cli-expander.tmux`, avoid using raw `prefix + ]` inside the form. It replays the tmux buffer as terminal input and can send trailing newlines or control bytes to the TUI.
 
 ## Safety Rules
 
@@ -260,6 +275,7 @@ ce generate-csv --force
 | Picker says target pane is invalid | Reopen the picker from a live pane and pass `#{pane_id}` |
 | Text appears in the wrong app area | Focus the intended input area before opening the picker |
 | Form opens in the popup | Expected behavior; submit it to inject the completed result into the target pane |
+| Pasting from Yazi closes the form | Reload the tmux integration, then use `Ctrl+V` or `prefix + ]` inside the form |
 | Popup stays open after injection | Reload the integration file; the current binding uses `display-popup -E` so successful picker runs close automatically |
 | Output contains `{{variable}}` placeholders | Update to the current binary; unresolved template variables are rejected before injection |
 | Multiline expansion fails | Use a single-line trigger until paste-buffer support lands |

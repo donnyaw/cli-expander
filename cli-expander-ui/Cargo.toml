@@ -10,5 +10,6 @@ anyhow = { workspace = true }
 thiserror = { workspace = true }
 log = { workspace = true }
 cursive = "0.21"
+arboard = "3"
 cli-expander-config = { path = "../cli-expander-config" }
 cli-expander-render = { path = "../cli-expander-render" }
